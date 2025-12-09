@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: policy-engine
+  datasource:
+    url: jdbc:h2:mem:policy-engine-db
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+policy-engine:
+  default-providers:
+    - serviceName: "Loan Service (Mock)"
+      baseUrl: "http://localhost:8080"
+      resourceType: "loan-account"
+      fetchEndpoint: "/api/v1/providers/mock/loans"
+    - serviceName: "User Service (Example)"
+      baseUrl: "http://localhost:8080"
+      resourceType: "user-profile"
+      fetchEndpoint: "/api/v1/users"
+
+server:
+  port: 8080
