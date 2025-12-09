@@ -72,10 +72,17 @@ To allow admins to create Entitlements and Policies for your service, you must e
 Your service is responsible for enforcing policies locally. You should not call the Policy Engine for every request.
 
 ### 2.1 Downloading the Bundle
-The Policy Engine exposes an endpoint to download a Policy Bundle containing all relevant rules for your service.
+The Policy Engine exposes an endpoint to download a Policy Bundle containing all relevant rules for your service. You can filter by `resourceTypes` to get only what you need.
 
-**Endpoint**: `GET /api/v1/bundles/{bundleId}/download`
+**Endpoint**: `GET /api/v1/bundles/download`
+**Query Parameters**:
+*   `resourceTypes`: (Optional) Comma-separated list of resource types (e.g., `loan-service:loan`).
 **Format**: `.tar.gz` (Gzipped Tarball)
+
+**Example**:
+```bash
+curl "http://policy-engine/api/v1/bundles/download?resourceTypes=loan-service:loan" -o bundle.tar.gz
+```
 
 **Bundle Contents**:
 *   `/policies/*.rego`: Individual policy files (OPA compatible).
@@ -123,3 +130,41 @@ For teams preferring a **GitOps** workflow, policies can be managed in a version
 2.  **Configure Sync**: In the Policy Engine UI, create a Policy and select **Git Repository** as the source.
 3.  **Sync**: Trigger a sync via UI or API (`POST /api/v1/policies/{id}/sync`) to update the Policy Engine's copy.
 4.  **Distribution**: The Policy Engine continues to serve the bundled policies to the Data Plane (Resource Providers) as described in Part 2.
+
+---
+
+## Part 4: Entitlement Synchronization
+
+If your service owns the source of truth for some entitlements (e.g., "User Alice is an owner of Loan L-101"), you should purely **push** this state to the Policy Engine.
+
+### 4.1 Batch Upsert Endpoint
+**Method**: `POST`
+**Path**: `/api/v1/entitlements/sync`
+**Purpose**: Update or create entitlements in bulk. This operation is **idempotent**—it finds existing entitlements by `(Subject, ResourceType)` and updates them, or creates new ones if missing.
+
+**Request Body**:
+```json
+[
+  {
+    "resourceType": "loan-service:loan",
+    "resourceIds": ["L-101", "L-102"],
+    "subjectType": "USER",
+    "subjectId": "alice",
+    "actions": ["VIEW", "APPROVE"],
+    "effect": "ALLOW"
+  },
+  {
+    "resourceType": "loan-service:loan",
+    "resourceIds": ["L-103"],
+    "subjectType": "USER",
+    "subjectId": "bob",
+    "actions": ["VIEW"],
+    "effect": "ALLOW"
+  }
+]
+```
+
+**Best Practices**:
+*   **Trigger on Change**: Call this API whenever resource ownership/permissions change in your service.
+*   **Periodic Reconciliation**: Optionally run a nightly job to push the full state to ensure consistency.
+

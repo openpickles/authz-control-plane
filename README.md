@@ -10,9 +10,11 @@ A centralized authorization system for managing OPA policies and entitlements ac
 - **Enhanced Authoring**: Professional editor (Monaco) with syntax highlighting and direct **File Upload** support.
 - **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
 - **Entitlement Management**: Define fine-grained access control rules (User/Role/Group).
+- **Entitlement Sync**: Batch push/upsert entitlements from external domain services.
+- **Dynamic Bundle Download**: Download OPA bundles filtered by resource type for local enforcement.
 - **User Management**: Manage users, roles, and groups.
 - **Modern UI**: Responsive dashboard built with React and TailwindCSS.
-- **API-First**: REST APIs for microservices to fetch policies and check entitlements.
+- **API-First**: REST APIs for microservices to fetch policies, sync entitlements, and download bundles.
 
 
 ## Tech Stack

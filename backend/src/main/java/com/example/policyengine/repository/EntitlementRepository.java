@@ -12,4 +12,7 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, Long> 
     List<Entitlement> findByResourceTypeAndResourceIdsContaining(String resourceType, String resourceId);
 
     List<Entitlement> findBySubjectTypeAndSubjectId(Entitlement.SubjectType subjectType, String subjectId);
+
+    List<Entitlement> findByResourceTypeAndSubjectTypeAndSubjectId(String resourceType,
+            Entitlement.SubjectType subjectType, String subjectId);
 }

@@ -73,9 +73,8 @@ Actions (Read, Write, Approve, etc.) should not be hardcoded. They should be con
 
 ### Policy Engine Responsibilities (Control Plane)
 1.  **Authoring**: UI to create Policies (Rego/Script) and Entitlements.
-2.  **Distribution Endpoint**: `GET /sync/bundle?service=loan-service`.
-    *   Returns all Policies relevant to `loan-service`.
-    *   Returns all Entitlements relevant to `loan-service`.
+2.  **Distribution Endpoint**: `GET /api/v1/bundles/download?resourceTypes=loan-service:loan`.
+    *   Returns a `.tar.gz` bundle (Policies + Data) filtered by resource type.
 
 ### Microservice Responsibilities (Data Plane)
 1.  **Sidecar / Library**: Use a lightweight library (or OPA sidecar) to fetch the bundle from Policy Engine on startup (and periodically).
@@ -86,6 +85,12 @@ Actions (Read, Write, Approve, etc.) should not be hardcoded. They should be con
         2.  **Lookup Policy**: What is the policy for "Loan Read"? -> `StandardAccessPolicy`.
         3.  **Execute**: Run `StandardAccessPolicy` with input `{user, resource, entitlement}`.
     *   **Decision**: Allow/Deny.
+    
+    ### 3.1 Two Modes of Entitlement Management
+    
+    We support two modes for managing entitlements:
+    1.  **Centralized Authoring (Pull)**: Admins create entitlements in the Policy Engine UI. Services pull these down via the bundle.
+    2.  **Service-Owned (Push)**: The source of truth for entitlements (e.g., "ownership") lives in the Domain Service. The service **pushes** these to the Policy Engine via the Sync API (`POST /api/v1/entitlements/sync`). The Policy Engine then redistributes them in bundles to OPA/Enforcement points.
 
 ### Data Flow Diagram
 ```mermaid

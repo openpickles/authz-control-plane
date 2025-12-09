@@ -25,6 +25,11 @@ public class EntitlementController {
         return entitlementService.createEntitlement(entitlement);
     }
 
+    @PostMapping("/sync")
+    public List<Entitlement> syncEntitlements(@RequestBody List<Entitlement> entitlements) {
+        return entitlementService.batchUpsert(entitlements);
+    }
+
     @GetMapping("/resource")
     public List<Entitlement> getByResource(@RequestParam String type, @RequestParam String id) {
         return entitlementService.getEntitlementsByResource(type, id);

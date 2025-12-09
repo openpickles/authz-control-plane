@@ -49,4 +49,33 @@ public class EntitlementService {
     public void deleteEntitlement(Long id) {
         entitlementRepository.deleteById(id);
     }
+
+    public List<Entitlement> batchUpsert(List<Entitlement> entitlements) {
+        return entitlements.stream().map(incoming -> {
+            // Find existing entitlement by business key
+            List<Entitlement> existingList = entitlementRepository.findByResourceTypeAndSubjectTypeAndSubjectId(
+                    incoming.getResourceType(),
+                    incoming.getSubjectType(),
+                    incoming.getSubjectId());
+
+            if (!existingList.isEmpty()) {
+                // Update the first matching entitlement (assuming 1:1 mapping for
+                // Subject+ResourceType for simplicity)
+                // In a more complex scenario, we might merge, but "Upsert" usually implies
+                // "Update specific target".
+                // Since our model allows multiple rows (List return), we pick the first to
+                // update or we'd need a better unique constraint.
+                // Given the requirement is just "services want to push", updating the primary
+                // record found is safest.
+                Entitlement existing = existingList.get(0);
+                existing.setResourceIds(incoming.getResourceIds()); // Overwrite resource IDs with the pushed state
+                existing.setActions(incoming.getActions());
+                existing.setEffect(incoming.getEffect());
+                return entitlementRepository.save(existing);
+            } else {
+                // Create new
+                return entitlementRepository.save(incoming);
+            }
+        }).toList();
+    }
 }

@@ -12,4 +12,6 @@ public interface PolicyBindingRepository extends JpaRepository<PolicyBinding, Lo
     List<PolicyBinding> findByResourceType(String resourceType);
 
     Optional<PolicyBinding> findByResourceTypeAndContext(String resourceType, String context);
+
+    List<PolicyBinding> findByResourceTypeIn(List<String> resourceTypes);
 }
