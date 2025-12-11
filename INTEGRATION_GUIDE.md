@@ -72,8 +72,21 @@ To allow admins to create Entitlements and Policies for your service, you must e
 Your service is responsible for enforcing policies locally. You should not call the Policy Engine for every request.
 
 ### 2.1 Downloading the Bundle
-The Policy Engine exposes an endpoint to download a Policy Bundle containing all relevant rules for your service. You can filter by `resourceTypes` to get only what you need.
+The bundle is a GZIP-compressed TAR file (`.tar.gz`) containing:
 
+1.  `data.json`: A JSON file containing all entitlement data and binding configurations.
+2.  `policies/`: A directory containing all Rego policy files.
+    *   Filenames correspond to the `filename` metadata set in the policy editor (e.g., `authz.rego`).
+    *   If no filename is set, it defaults to `{policyName}.rego`.
+
+### Bundle Structure Example
+```
+bundle.tar.gz
+├── data.json
+└── policies
+    ├── base.rego
+    └── common.rego
+```
 **Endpoint**: `GET /api/v1/bundles/download`
 **Query Parameters**:
 *   `resourceTypes`: (Optional) Comma-separated list of resource types (e.g., `loan-service:loan`).

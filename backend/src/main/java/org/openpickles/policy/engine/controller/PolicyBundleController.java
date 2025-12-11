@@ -76,7 +76,7 @@ public class PolicyBundleController {
         try {
             // 1. Fetch Data
             Set<String> policyIds = bindings.stream()
-                    .map(PolicyBinding::getPolicyId)
+                    .flatMap(b -> b.getPolicyIds().stream())
                     .collect(Collectors.toSet());
             List<Policy> policies = policyRepository.findByNameIn(policyIds);
 
@@ -113,7 +113,8 @@ public class PolicyBundleController {
                     String policyContent = policy.getContent();
                     if (policyContent == null)
                         policyContent = "";
-                    String filename = "policies/" + policy.getName() + ".rego";
+                    String filename = "policies/"
+                            + (policy.getFilename() != null ? policy.getFilename() : policy.getName() + ".rego");
                     org.apache.commons.compress.archivers.tar.TarArchiveEntry policyEntry = new org.apache.commons.compress.archivers.tar.TarArchiveEntry(
                             filename);
                     policyEntry.setSize(policyContent.getBytes().length);

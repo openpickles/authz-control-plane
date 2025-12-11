@@ -6,6 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.openpickles.policy.engine.model.Policy;
+import org.openpickles.policy.engine.repository.PolicyRepository;
+import org.openpickles.policy.engine.exception.FunctionalException;
+import java.util.HashSet;
 import java.util.List;
 
 @RestController
@@ -14,6 +18,9 @@ public class PolicyBindingController {
 
     @Autowired
     private PolicyBindingRepository repository;
+
+    @Autowired
+    private PolicyRepository policyRepository;
 
     @GetMapping
     public List<PolicyBinding> getAllBindings() {
@@ -26,15 +33,20 @@ public class PolicyBindingController {
     }
 
     @PostMapping
-    public PolicyBinding createOrUpdateBinding(@RequestBody PolicyBinding binding) {
-        // Check if binding exists for this type + context
-        return repository.findByResourceTypeAndContext(binding.getResourceType(), binding.getContext())
-                .map(existing -> {
-                    existing.setPolicyId(binding.getPolicyId());
-                    existing.setEvaluationMode(binding.getEvaluationMode());
-                    return repository.save(existing);
-                })
-                .orElseGet(() -> repository.save(binding));
+    public PolicyBinding createBinding(@RequestBody PolicyBinding binding) {
+        if (binding.getPolicyIds() == null || binding.getPolicyIds().isEmpty()) {
+            throw new FunctionalException(
+                    "At least one Policy ID is required", "FUNC_009");
+        }
+
+        // validate all policies exist
+        List<Policy> policies = policyRepository.findByNameIn(new HashSet<>(binding.getPolicyIds()));
+        if (policies.size() != new HashSet<>(binding.getPolicyIds()).size()) {
+            throw new FunctionalException(
+                    "One or more policies not found", "FUNC_010");
+        }
+
+        return repository.save(binding);
     }
 
     @DeleteMapping("/{id}")

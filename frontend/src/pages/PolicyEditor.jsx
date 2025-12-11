@@ -10,6 +10,8 @@ const PolicyEditor = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
+        description: '',
+        filename: '',
         content: '',
         version: '1.0',
         status: 'DRAFT',
@@ -39,6 +41,8 @@ const PolicyEditor = () => {
         setSelectedPolicy(policy);
         setFormData({
             name: policy.name,
+            description: policy.description || '',
+            filename: policy.filename || '',
             content: policy.content,
             version: policy.version,
             status: policy.status,
@@ -55,6 +59,8 @@ const PolicyEditor = () => {
         setSelectedPolicy(null);
         setFormData({
             name: '',
+            description: '',
+            filename: '',
             content: 'package policy\n\ndefault allow = false\n\n',
             version: '1.0',
             status: 'DRAFT',
@@ -98,6 +104,24 @@ const PolicyEditor = () => {
                 console.error('Error deleting policy:', error);
             }
         }
+    };
+
+    const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setFormData({ ...formData, content: e.target.result });
+            };
+            reader.readAsText(file);
+        }
+    };
+
+    const handleSyncGit = async () => {
+        if (!selectedPolicy?.id) return;
+        // implementation for git sync
+        console.log("Syncing with git...");
+        alert("Git sync functionality coming soon.");
     };
 
     return (
@@ -153,13 +177,29 @@ const PolicyEditor = () => {
                         <div className="p-4 border-b border-slate-200 flex flex-col gap-4 bg-white">
                             <div className="flex justify-between items-center">
                                 <div className="flex gap-4 items-center">
-                                    <input
-                                        type="text"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Policy Name"
-                                        className="text-lg font-bold text-slate-900 border-none focus:ring-0 p-0 placeholder-slate-400 w-64"
-                                    />
+                                    <div className="flex flex-col gap-2">
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            placeholder="Policy Name (ID)"
+                                            className="text-lg font-bold text-slate-900 border-none focus:ring-0 p-0 placeholder-slate-400 w-64"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={formData.filename}
+                                            onChange={(e) => setFormData({ ...formData, filename: e.target.value })}
+                                            placeholder="filename.rego (unique)"
+                                            className="text-xs text-slate-600 border-none focus:ring-0 p-0 placeholder-slate-400 w-64"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            placeholder="Short description..."
+                                            className="text-xs text-slate-500 border-none focus:ring-0 p-0 placeholder-slate-400 w-96 italic"
+                                        />
+                                    </div>
                                     <div className="h-6 w-px bg-slate-200"></div>
                                     <select
                                         value={formData.status}

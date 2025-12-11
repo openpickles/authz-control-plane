@@ -35,14 +35,16 @@ public class PolicyBundleDownloadIntegrationTest {
         Policy policy = new Policy();
         policy.setName("test.policy");
         policy.setContent("package test.policy\ndefault allow = true");
-        policyRepository.save(policy);
+        policy.setFilename("test.rego");
         policyRepository.save(policy);
 
         PolicyBinding binding = new PolicyBinding();
-        binding.setPolicyId("test.policy");
         binding.setResourceType("DOCUMENT");
         binding.setContext("HEADQUARTERS");
+        binding.setPolicyIds(java.util.List.of("test.policy"));
         binding.setEvaluationMode("OFFLINE");
+        policyBindingRepository.save(binding);
+        binding.setEvaluationMode("DIRECT");
         policyBindingRepository.save(binding);
     }
 

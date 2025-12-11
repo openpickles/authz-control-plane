@@ -5,11 +5,12 @@ import { policyBindingService, resourceProviderService } from '../services/api';
 const PolicyBindings = () => {
     const [bindings, setBindings] = useState([]);
     const [providers, setProviders] = useState([]);
+    const [policies, setPolicies] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         resourceType: '',
         context: '',
-        policyId: '',
+        policyIds: [],
         evaluationMode: 'DIRECT'
     });
 
@@ -31,17 +32,35 @@ const PolicyBindings = () => {
         }
     }, []);
 
+    const loadPolicies = React.useCallback(async () => {
+        try {
+            // Assuming policyService is imported or available in api.js
+            // If not imported, I need to check imports. The file has policyBindingService and resourceProviderService.
+            // I'll add policyService to imports in next step if checking shows it missing.
+            // For now assuming it's exported from same place.
+            // Wait, looking at file imports: import { policyBindingService, resourceProviderService } from '../services/api';
+            // It is likely exported but I need to update import.
+            // I will do separate edit for import.
+            // Here I assume it's available.
+            const response = await import('../services/api').then(m => m.policyService.getAll());
+            setPolicies(response.data);
+        } catch (error) {
+            console.error('Error loading policies:', error);
+        }
+    }, []);
+
     useEffect(() => {
         loadBindings();
         loadProviders();
-    }, [loadBindings, loadProviders]);
+        loadPolicies();
+    }, [loadBindings, loadProviders, loadPolicies]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             await policyBindingService.create(formData);
             setShowModal(false);
-            setFormData({ resourceType: '', context: '', policyId: '', evaluationMode: 'DIRECT' });
+            setFormData({ resourceType: '', context: '', policyIds: [], evaluationMode: 'DIRECT' });
             loadBindings();
         } catch (error) {
             console.error('Error creating binding:', error);
@@ -96,7 +115,7 @@ const PolicyBindings = () => {
                             <tr>
                                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Resource Type</th>
                                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Context</th>
-                                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Policy ID</th>
+                                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Policies</th>
                                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mode</th>
                                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                             </tr>
@@ -110,9 +129,15 @@ const PolicyBindings = () => {
                                             {binding.context}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-slate-600 font-mono flex items-center gap-2">
-                                        <LinkIcon size={14} className="text-slate-400" />
-                                        {binding.policyId}
+                                    <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                                        <div className="flex flex-wrap gap-1">
+                                            {(binding.policyIds || []).map(pid => (
+                                                <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs">
+                                                    <LinkIcon size={10} className="text-slate-400" />
+                                                    {pid}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-600">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
@@ -154,8 +179,9 @@ const PolicyBindings = () => {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
+                                <label htmlFor="resourceType" className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
                                 <select
+                                    id="resourceType"
                                     value={formData.resourceType}
                                     onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
                                     className="input-field"
@@ -202,6 +228,28 @@ const PolicyBindings = () => {
                             </div>
 
                             <div>
+                                <label htmlFor="policies" className="block text-sm font-medium text-slate-700 mb-1">Policies (Select Multiple)</label>
+                                <select
+                                    id="policies"
+                                    multiple
+                                    value={formData.policyIds}
+                                    onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                                        setFormData({ ...formData, policyIds: selected });
+                                    }}
+                                    className="input-field h-32"
+                                    required
+                                >
+                                    {policies.map(policy => (
+                                        <option key={policy.id} value={policy.name}>
+                                            {policy.name} {policy.filename ? `(${policy.filename})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-slate-500 mt-1">Hold Cmd/Ctrl to select multiple.</p>
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Evaluation Mode</label>
                                 <select
                                     value={formData.evaluationMode}
@@ -213,18 +261,6 @@ const PolicyBindings = () => {
                                         <option key={mode} value={mode}>{mode}</option>
                                     ))}
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Policy ID</label>
-                                <input
-                                    type="text"
-                                    value={formData.policyId}
-                                    onChange={(e) => setFormData({ ...formData, policyId: e.target.value })}
-                                    placeholder="e.g., policy-123"
-                                    className="input-field"
-                                    required
-                                />
                             </div>
 
                             <div className="flex gap-3 pt-4 border-t border-slate-100">

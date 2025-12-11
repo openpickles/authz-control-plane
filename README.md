@@ -11,7 +11,25 @@ A centralized authorization system for managing OPA policies and entitlements ac
 - **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
 - **Entitlement Management**: Define fine-grained access control rules (User/Role/Group).
 - **Entitlement Sync**: Batch push/upsert entitlements from external domain services.
-- **Dynamic Bundle Download**: Download OPA bundles filtered by resource type for local enforcement.
+- **Dynamic Bundle Download**: Download policies tailored to specific resource types (e.g., `?resourceTypes=DOCUMENT`).
+- **Policy Metadata**: Policies now support `description` and `filename` metadata for better organization.
+- **Multi-Policy Binding**: Bind multiple policies to a single context, allowing modular policy composition.
+
+## Testing
+
+### Backend
+Run backend tests using Maven:
+```bash
+cd backend
+mvn test
+```
+
+### Frontend
+Run frontend component tests using Vitest:
+```bash
+cd frontend
+npm test
+```
 - **User Management**: Manage users, roles, and groups.
 - **Modern UI**: Responsive dashboard built with React and TailwindCSS.
 - **API-First**: REST APIs for microservices to fetch policies, sync entitlements, and download bundles.

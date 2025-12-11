@@ -36,6 +36,12 @@ public class Policy {
     private String gitPath;
     private LocalDateTime lastSyncTime;
     private String syncStatus; // SUCCESS, FAILED
+    
+    @Column(length = 1000)
+    private String description;
+
+    @Column(unique = true, nullable = false)
+    private String filename; // e.g., "authz.rego"
 
     public enum SourceType {
         MANUAL, GIT
@@ -130,5 +136,21 @@ public class Policy {
 
     public void setSyncStatus(String syncStatus) {
         this.syncStatus = syncStatus;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public void setFilename(String filename) {
+        this.filename = filename;
     }
 }

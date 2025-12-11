@@ -46,6 +46,29 @@ Directly linking a Policy ID to every single Entitlement row is tedious and hard
 3.  **Binding (The Association)**:
     *   **Implicit Binding (Recommended)**: Policies are assigned to **Resource Types** and **Actions**.
         *   *Config*: "For `loan-service:loan` + `read`, execute Policy `StandardAccessPolicy`".
+
+### 2.1 Policy Entity
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | Long | Unique identifier |
+| `name` | String | Unique name/ID of the policy |
+| `description` | String | (New) Short description of the policy |
+| `filename` | String | (New) Unique filename for the policy in the bundle (e.g., `authz.rego`) |
+| `content` | Text | Rego policy content |
+| `version` | String | Semantic version |
+| `status` | Enum | DRAFT, ACTIVE, ARCHIVED |
+| `sourceType` | Enum | MANUAL, GIT |
+
+### 2.2 PolicyBinding Entity
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | Long | Unique identifier |
+| `resourceType` | String | The resource type these policies apply to |
+| `context` | String | The context identifier (e.g., `authz`) |
+| `policyIds` | List<String> | (New) List of Policy Names bound to this context |
+| `evaluationMode` | Enum | DIRECT, ATTRIBUTE, CONDITION |
         *   *Runtime*: When Alice tries to Read Loan-101, the Microservice sees she has the "Owner" entitlement. It then looks up the policy for "Loan Read" and executes it.
 
 ### Management UI: Policy Bindings
