@@ -1,6 +1,6 @@
 # Centralized Policy Engine
 
-A centralized authorization system for managing OPA policies and entitlements across microservices. Built with Spring Boot and React.
+A reference implementation of a centralized authorization system for managing OPA policies and entitlements across microservices. Built with Spring Boot and React.
 
 ![Dashboard](https://via.placeholder.com/800x400?text=Policy+Engine+Dashboard)
 

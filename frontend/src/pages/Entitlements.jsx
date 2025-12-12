@@ -363,7 +363,22 @@ const Entitlements = () => {
                                         <MultiSelect
                                             options={resourceOptions}
                                             value={formData.resourceIds}
-                                            onChange={(newIds) => setFormData({ ...formData, resourceIds: newIds })}
+                                            onChange={(newIds) => {
+                                                let updatedIds = newIds;
+                                                const wasAll = formData.resourceIds.includes('*');
+                                                const isAll = newIds.includes('*');
+
+                                                if (!wasAll && isAll) {
+                                                    // User just selected '*', clear others
+                                                    updatedIds = ['*'];
+                                                } else if (wasAll && isAll && newIds.length > 1) {
+                                                    // User selected something else while '*' was selected, remove '*'
+                                                    updatedIds = newIds.filter(id => id !== '*');
+                                                }
+                                                // If user deselected '*', it just gets removed naturally
+
+                                                setFormData({ ...formData, resourceIds: updatedIds });
+                                            }}
                                             placeholder="Select resources..."
                                         />
 
