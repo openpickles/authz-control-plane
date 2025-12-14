@@ -32,8 +32,7 @@ const Layout = ({ children }) => {
                         <Shield className="text-white" size={20} />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold tracking-tight">PolicyEngine</h1>
-                        <p className="text-xs text-slate-400">Enterprise Edition</p>
+                        <h1 className="text-lg font-bold tracking-tight">Policy Engine Control Plane</h1>
                     </div>
                 </div>
 
