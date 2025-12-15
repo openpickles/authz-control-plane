@@ -37,7 +37,11 @@
     - **Sync**: On-demand synchronization of policies from Git.
 - **Sync API**: Endpoint (`/api/v1/sync/policies`) to expose active policies.
 
----
+- **Sync API**: Endpoint (`/api/v1/sync/policies`) to expose active policies.
+
+### 5. Infrastructure & Deployment
+- **Integrated Build**: Backend build process now automatically builds the frontend and packages it into the JAR.
+- **Single Artifact**: Deployment simplified to a single JAR or Docker container.
 
 ## TODO / Known Issues
 

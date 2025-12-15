@@ -18,12 +18,26 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable()) // Disable CSRF for simplicity in this demo
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/h2-console/**").permitAll() // Allow H2 Console
+                        .requestMatchers("/h2-console/**", "/favicon.ico", "/error").permitAll() // Allow H2 Console and
+                                                                                                 // static assets
                         .requestMatchers("/api/v1/sync/**").permitAll() // Public sync API
-                        .requestMatchers("/api/v1/**").permitAll() // Allow all API for now (dev mode)
                         .anyRequest().authenticated())
+                .formLogin(withDefaults()) // Enable default login page
+                .httpBasic(withDefaults()) // Enable Basic Auth for API testing
                 .headers(headers -> headers.frameOptions(frame -> frame.disable())); // For H2 Console
 
         return http.build();
+    }
+
+    @Bean
+    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
+        org.springframework.security.core.userdetails.UserDetails user = org.springframework.security.core.userdetails.User
+                .withDefaultPasswordEncoder()
+                .username("admin")
+                .password("admin123")
+                .roles("ADMIN")
+                .build();
+
+        return new org.springframework.security.provisioning.InMemoryUserDetailsManager(user);
     }
 }

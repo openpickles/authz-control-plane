@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -49,9 +50,9 @@ public class PolicyBundleDownloadIntegrationTest {
     }
 
     @Test
-    @WithMockUser
     public void testDownloadBundle_ByResourceType_Success() throws Exception {
         mockMvc.perform(get("/api/v1/bundles/download")
+                .with(user("admin").roles("ADMIN"))
                 .param("resourceTypes", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/gzip"))
@@ -61,9 +62,9 @@ public class PolicyBundleDownloadIntegrationTest {
     }
 
     @Test
-    @WithMockUser
     public void testDownloadBundle_All_Success() throws Exception {
-        mockMvc.perform(get("/api/v1/bundles/download")) // No params
+        mockMvc.perform(get("/api/v1/bundles/download") // No params
+                .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/gzip"));
     }

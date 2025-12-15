@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,7 +37,6 @@ public class EntitlementSyncIntegrationTest {
         }
 
         @Test
-        @WithMockUser // Simulate an authenticated user
         public void testSyncEntitlements_Upsert() throws Exception {
                 // 1. Initial Sync: Create new entitlement
                 Entitlement e1 = new Entitlement();
@@ -48,6 +48,7 @@ public class EntitlementSyncIntegrationTest {
                 e1.setEffect(Entitlement.Effect.ALLOW);
 
                 mockMvc.perform(post("/api/v1/entitlements/sync")
+                                .with(user("admin").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(new ObjectMapper().writeValueAsString(List.of(e1))))
                                 .andExpect(status().isOk());
@@ -69,6 +70,7 @@ public class EntitlementSyncIntegrationTest {
                 e1Update.setEffect(Entitlement.Effect.ALLOW);
 
                 mockMvc.perform(post("/api/v1/entitlements/sync")
+                                .with(user("admin").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(new ObjectMapper().writeValueAsString(List.of(e1Update))))
                                 .andExpect(status().isOk());

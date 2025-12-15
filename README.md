@@ -48,33 +48,38 @@ npm test
 - Node.js 18+
 - Maven (wrapper included)
 
-### Running the Backend
+### Running the Application
+
+You can run the application in two ways:
+
+#### 1. Integrated Build (Recommended for Production)
+This will build both the frontend and backend, bundle them into a single JAR, and run it.
 
 1.  Navigate to the `backend` directory:
     ```bash
     cd backend
     ```
-2.  Run the application:
+2.  Clean and package (this automates the `npm build`):
     ```bash
-    ./mvnw spring-boot:run
+    ./mvnw clean package
     ```
-    The backend will start on `http://localhost:8080`.
+3.  Run the JAR:
+    ```bash
+    java -jar target/policy-engine-0.0.1.jar
+    ```
+    The application (UI and API) will be available at `http://localhost:8080`.
 
-### Running the Frontend
+#### 2. Development Mode
+Run frontend and backend separately for hot-reloading.
 
-1.  Navigate to the `frontend` directory:
-    ```bash
-    cd frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-    The frontend will start on `http://localhost:5173`.
+**Backend**:
+1.  `cd backend`
+2.  `./mvnw spring-boot:run` (Starts on `http://localhost:8080`)
+
+**Frontend**:
+1.  `cd frontend`
+2.  `npm install`
+3.  `npm run dev` (Starts on `http://localhost:5173`)
 
 ## Contributing
 
