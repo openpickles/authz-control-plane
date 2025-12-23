@@ -159,7 +159,7 @@ const PolicyBundles = () => {
                                             <div className="ml-3 flex-1 grid grid-cols-3 gap-4 text-sm">
                                                 <span className="font-medium text-slate-900">{binding.resourceType}</span>
                                                 <span className="text-slate-600">{binding.context}</span>
-                                                <span className="text-slate-500 font-mono text-xs">{binding.policyId}</span>
+                                                <span className="text-slate-500 font-mono text-xs">{(binding.policyIds || []).length} policies</span>
                                             </div>
                                         </label>
                                     ))}

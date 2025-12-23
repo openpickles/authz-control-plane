@@ -18,7 +18,9 @@ const PolicyEditor = () => {
         sourceType: 'MANUAL',
         gitRepositoryUrl: '',
         gitBranch: 'main',
-        gitPath: ''
+        gitPath: '',
+        lastSyncTime: null,
+        syncStatus: null
     });
 
 
@@ -49,7 +51,9 @@ const PolicyEditor = () => {
             sourceType: policy.sourceType || 'MANUAL',
             gitRepositoryUrl: policy.gitRepositoryUrl,
             gitBranch: policy.gitBranch,
-            gitPath: policy.gitPath
+            gitPath: policy.gitPath,
+            lastSyncTime: policy.lastSyncTime,
+            syncStatus: policy.syncStatus
 
         });
         setIsEditing(true);
@@ -67,7 +71,9 @@ const PolicyEditor = () => {
             sourceType: 'MANUAL',
             gitRepositoryUrl: '',
             gitBranch: 'main',
-            gitPath: ''
+            gitPath: '',
+            lastSyncTime: null,
+            syncStatus: null
         });
 
         setIsEditing(true);
@@ -111,7 +117,11 @@ const PolicyEditor = () => {
         if (file) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setFormData({ ...formData, content: e.target.result });
+                setFormData({
+                    ...formData,
+                    content: e.target.result,
+                    filename: file.name
+                });
             };
             reader.readAsText(file);
         }
@@ -119,9 +129,21 @@ const PolicyEditor = () => {
 
     const handleSyncGit = async () => {
         if (!selectedPolicy?.id) return;
-        // implementation for git sync
-        console.log("Syncing with git...");
-        alert("Git sync functionality coming soon.");
+        try {
+            const response = await policyService.sync(selectedPolicy.id);
+            const updatedPolicy = response.data;
+            setFormData(prev => ({
+                ...prev,
+                content: updatedPolicy.content, // Update content from git
+                lastSyncTime: updatedPolicy.lastSyncTime,
+                syncStatus: updatedPolicy.syncStatus
+            }));
+            await loadPolicies(); // Refresh list to update any status indicators there
+            alert("Policy synced successfully from Git!");
+        } catch (error) {
+            console.error('Error syncing policy:', error);
+            alert("Failed to sync policy. Check console for details.");
+        }
     };
 
     return (
@@ -309,14 +331,32 @@ const PolicyEditor = () => {
                                             />
                                         </div>
                                         {selectedPolicy && (
-                                            <button
-                                                onClick={handleSyncGit}
-                                                className="px-3 py-2 bg-slate-800 text-white rounded-md text-xs font-medium hover:bg-slate-700 flex items-center gap-1 mb-[1px]"
-                                            >
-                                                <RefreshCw size={14} />
-                                                Sync
-                                            </button>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <button
+                                                    onClick={handleSyncGit}
+                                                    className="px-3 py-2 bg-slate-800 text-white rounded-md text-xs font-medium hover:bg-slate-700 flex items-center gap-1"
+                                                >
+                                                    <RefreshCw size={14} />
+                                                    Sync Now
+                                                </button>
+                                            </div>
                                         )}
+                                    </div>
+                                    <div className="col-span-3 flex justify-between items-center text-xs text-slate-500 border-t border-slate-200 pt-2 mt-1">
+                                        <div className="flex gap-2">
+                                            <span>Last Sync: </span>
+                                            <span className="font-mono text-slate-700">
+                                                {formData.lastSyncTime ? new Date(formData.lastSyncTime).toLocaleString() : 'Never'}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <span>Status: </span>
+                                            <span className={`font-medium ${(formData.syncStatus || '').startsWith('FAILED') ? 'text-red-600' :
+                                                formData.syncStatus === 'SUCCESS' ? 'text-green-600' : 'text-slate-600'
+                                                }`}>
+                                                {formData.syncStatus || 'Unknown'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             )}

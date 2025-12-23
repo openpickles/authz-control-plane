@@ -14,7 +14,6 @@ const Layout = ({ children }) => {
         { path: '/policy-bindings', icon: LinkIcon, label: 'Policy Bindings' },
         { path: '/policy-bundles', icon: Package, label: 'Policy Bundles' },
         { path: '/providers', icon: Server, label: 'Resource Providers' },
-        { path: '/users', icon: Users, label: 'User Management' },
         { path: '/settings', icon: Settings, label: 'Settings' },
     ];
 

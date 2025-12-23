@@ -42,7 +42,7 @@ public class PolicyBundleDownloadIntegrationTest {
         PolicyBinding binding = new PolicyBinding();
         binding.setResourceType("DOCUMENT");
         binding.setContext("HEADQUARTERS");
-        binding.setPolicyIds(java.util.List.of("test.policy"));
+        binding.setPolicyIds(java.util.List.of(policy.getId()));
         binding.setEvaluationMode("OFFLINE");
         policyBindingRepository.save(binding);
         binding.setEvaluationMode("DIRECT");

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, X, Link as LinkIcon } from 'lucide-react';
-import { policyBindingService, resourceProviderService } from '../services/api';
+import { policyBindingService, resourceProviderService, policyService } from '../services/api';
+import MultiSelect from '../components/MultiSelect';
 
 const PolicyBindings = () => {
     const [bindings, setBindings] = useState([]);
@@ -34,15 +35,7 @@ const PolicyBindings = () => {
 
     const loadPolicies = React.useCallback(async () => {
         try {
-            // Assuming policyService is imported or available in api.js
-            // If not imported, I need to check imports. The file has policyBindingService and resourceProviderService.
-            // I'll add policyService to imports in next step if checking shows it missing.
-            // For now assuming it's exported from same place.
-            // Wait, looking at file imports: import { policyBindingService, resourceProviderService } from '../services/api';
-            // It is likely exported but I need to update import.
-            // I will do separate edit for import.
-            // Here I assume it's available.
-            const response = await import('../services/api').then(m => m.policyService.getAll());
+            const response = await policyService.getAll();
             setPolicies(response.data);
         } catch (error) {
             console.error('Error loading policies:', error);
@@ -76,6 +69,11 @@ const PolicyBindings = () => {
                 console.error('Error deleting binding:', error);
             }
         }
+    };
+
+    const getPolicyName = (id) => {
+        const policy = policies.find(p => p.id === id);
+        return policy ? policy.name : id;
     };
 
     const contextOptions = [
@@ -134,7 +132,7 @@ const PolicyBindings = () => {
                                             {(binding.policyIds || []).map(pid => (
                                                 <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs">
                                                     <LinkIcon size={10} className="text-slate-400" />
-                                                    {pid}
+                                                    {getPolicyName(pid)}
                                                 </span>
                                             ))}
                                         </div>
@@ -228,25 +226,17 @@ const PolicyBindings = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="policies" className="block text-sm font-medium text-slate-700 mb-1">Policies (Select Multiple)</label>
-                                <select
-                                    id="policies"
-                                    multiple
+                                <MultiSelect
+                                    label="Policies"
+                                    options={policies.map(p => ({
+                                        value: p.id,
+                                        label: `${p.name} (${p.filename || 'no-file'})`
+                                    }))}
                                     value={formData.policyIds}
-                                    onChange={(e) => {
-                                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                                        setFormData({ ...formData, policyIds: selected });
-                                    }}
-                                    className="input-field h-32"
-                                    required
-                                >
-                                    {policies.map(policy => (
-                                        <option key={policy.id} value={policy.name}>
-                                            {policy.name} {policy.filename ? `(${policy.filename})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-slate-500 mt-1">Hold Cmd/Ctrl to select multiple.</p>
+                                    onChange={(newIds) => setFormData({ ...formData, policyIds: newIds })}
+                                    placeholder="Select policies..."
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Select multiple policies to bind.</p>
                             </div>
 
                             <div>

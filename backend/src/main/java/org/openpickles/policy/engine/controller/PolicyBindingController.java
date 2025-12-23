@@ -40,7 +40,7 @@ public class PolicyBindingController {
         }
 
         // validate all policies exist
-        List<Policy> policies = policyRepository.findByNameIn(new HashSet<>(binding.getPolicyIds()));
+        List<Policy> policies = policyRepository.findAllById(binding.getPolicyIds());
         if (policies.size() != new HashSet<>(binding.getPolicyIds()).size()) {
             throw new FunctionalException(
                     "One or more policies not found", "FUNC_010");

@@ -75,10 +75,10 @@ public class PolicyBundleController {
     private ResponseEntity<byte[]> generateBundleResponse(List<PolicyBinding> bindings, String filenameBase) {
         try {
             // 1. Fetch Data
-            Set<String> policyIds = bindings.stream()
+            Set<Long> policyIds = bindings.stream()
                     .flatMap(b -> b.getPolicyIds().stream())
                     .collect(Collectors.toSet());
-            List<Policy> policies = policyRepository.findByNameIn(policyIds);
+            List<Policy> policies = policyRepository.findAllById(policyIds);
 
             Set<String> resourceTypes = bindings.stream()
                     .map(PolicyBinding::getResourceType)
