@@ -22,8 +22,6 @@
   --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-/* Import Font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   font-family: var(--font-sans);
@@ -84,18 +82,23 @@
   }
 
   .card {
-    @apply bg-white rounded-lg border border-slate-200 shadow-card;
+    @apply bg-white rounded-lg border border-slate-200 shadow-sm transition-shadow duration-200 hover:shadow-md;
   }
 
   .input-field {
-    @apply w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm;
+    @apply w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm transition-colors;
   }
 
   .table-header {
-    @apply px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider bg-slate-50 border-b border-slate-200;
+    @apply px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50 border-b border-slate-200;
   }
 
   .table-cell {
-    @apply px-6 py-4 whitespace-nowrap text-sm text-slate-700 border-b border-slate-100;
+    @apply px-6 py-4 whitespace-nowrap text-sm text-slate-700 border-b border-slate-100 last:border-0;
+  }
+
+  /* Full height layout helpers */
+  .page-container {
+    @apply flex flex-col h-full overflow-hidden;
   }
 }

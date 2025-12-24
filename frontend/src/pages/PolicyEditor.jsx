@@ -164,7 +164,7 @@ const PolicyEditor = () => {
     };
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] gap-6">
+        <div className="flex h-full gap-6">
             {/* Policy List Sidebar */}
             <div className="w-80 card flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
