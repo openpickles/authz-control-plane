@@ -94,6 +94,7 @@ const PolicyEditor = () => {
             }
         } catch (error) {
             console.error('Error saving policy:', error);
+            alert('Failed to save policy. Check console for details.');
         }
     };
 
