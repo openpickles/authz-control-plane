@@ -53,6 +53,10 @@ public class PolicyService {
     }
 
     private void validatePolicy(Policy policy) {
+        if (policy.getName() == null || policy.getName().trim().isEmpty()) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Policy name cannot be empty", "VAL_001");
+        }
         if (policy.getFilename() == null || policy.getFilename().trim().isEmpty()) {
             throw new org.openpickles.policy.engine.exception.FunctionalException(
                     "Filename cannot be empty", "VAL_002");

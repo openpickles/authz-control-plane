@@ -72,6 +72,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        String traceId = getTraceId();
+        logger.warn("Data integrity violation: {} TraceId: {}", ex.getMessage(), traceId);
+
+        ErrorResponse response = ErrorResponse.builder()
+                .errorCode("DAT_001")
+                .errorMessage("Policy with this name or filename already exists.")
+                .details(ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .traceId(traceId)
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         String traceId = getTraceId();

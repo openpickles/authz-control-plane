@@ -94,7 +94,8 @@ const PolicyEditor = () => {
             }
         } catch (error) {
             console.error('Error saving policy:', error);
-            alert('Failed to save policy. Check console for details.');
+            const message = error.response?.data?.errorMessage || 'Failed to save policy. Check console for details.';
+            alert(message);
         }
     };
 
@@ -118,11 +119,26 @@ const PolicyEditor = () => {
         if (file) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setFormData({
-                    ...formData,
+                const rawFilename = file.name;
+                const nameWithoutExt = rawFilename.replace(/\.rego$/, '');
+
+                // Append timestamp to ensure filename uniqueness
+                // Format: filename_TIMESTAMP.rego to avoid collision
+                const timestamp = new Date().getTime();
+                const uniqueFilename = rawFilename.replace(/(\.rego)?$/, `_${timestamp}$1`); // $1 restores extension if present or adds nothing if not matched correctly (but regex expects .rego)
+                // Actually safer:
+                const extIndex = rawFilename.lastIndexOf('.');
+                const baseName = extIndex !== -1 ? rawFilename.substring(0, extIndex) : rawFilename;
+                const extension = extIndex !== -1 ? rawFilename.substring(extIndex) : '';
+                const uniqueName = `${baseName}_${timestamp}${extension}`;
+
+                setFormData(prev => ({
+                    ...prev,
                     content: e.target.result,
-                    filename: file.name
-                });
+                    filename: uniqueName,
+                    // Auto-fill name if empty
+                    name: prev.name ? prev.name : nameWithoutExt
+                }));
             };
             reader.readAsText(file);
         }
