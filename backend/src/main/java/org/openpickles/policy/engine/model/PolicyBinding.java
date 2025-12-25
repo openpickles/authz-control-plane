@@ -21,7 +21,7 @@ public class PolicyBinding {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "policy_binding_policies", joinColumns = @JoinColumn(name = "policy_binding_id"))
     @Column(name = "policy_id")
-    private java.util.List<String> policyIds = new java.util.ArrayList<>();
+    private java.util.List<Long> policyIds = new java.util.ArrayList<>();
 
     @Column(nullable = false)
     private String evaluationMode; // DIRECT, ATTRIBUTE, CONDITION
@@ -29,7 +29,7 @@ public class PolicyBinding {
     public PolicyBinding() {
     }
 
-    public PolicyBinding(String resourceType, String context, java.util.List<String> policyIds, String evaluationMode) {
+    public PolicyBinding(String resourceType, String context, java.util.List<Long> policyIds, String evaluationMode) {
         this.resourceType = resourceType;
         this.context = context;
         this.policyIds = policyIds;
@@ -60,11 +60,11 @@ public class PolicyBinding {
         this.context = context;
     }
 
-    public java.util.List<String> getPolicyIds() {
+    public java.util.List<Long> getPolicyIds() {
         return policyIds;
     }
 
-    public void setPolicyIds(java.util.List<String> policyIds) {
+    public void setPolicyIds(java.util.List<Long> policyIds) {
         this.policyIds = policyIds;
     }
 

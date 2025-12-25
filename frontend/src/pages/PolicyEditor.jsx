@@ -18,7 +18,9 @@ const PolicyEditor = () => {
         sourceType: 'MANUAL',
         gitRepositoryUrl: '',
         gitBranch: 'main',
-        gitPath: ''
+        gitPath: '',
+        lastSyncTime: null,
+        syncStatus: null
     });
 
 
@@ -49,7 +51,9 @@ const PolicyEditor = () => {
             sourceType: policy.sourceType || 'MANUAL',
             gitRepositoryUrl: policy.gitRepositoryUrl,
             gitBranch: policy.gitBranch,
-            gitPath: policy.gitPath
+            gitPath: policy.gitPath,
+            lastSyncTime: policy.lastSyncTime,
+            syncStatus: policy.syncStatus
 
         });
         setIsEditing(true);
@@ -67,7 +71,9 @@ const PolicyEditor = () => {
             sourceType: 'MANUAL',
             gitRepositoryUrl: '',
             gitBranch: 'main',
-            gitPath: ''
+            gitPath: '',
+            lastSyncTime: null,
+            syncStatus: null
         });
 
         setIsEditing(true);
@@ -88,6 +94,8 @@ const PolicyEditor = () => {
             }
         } catch (error) {
             console.error('Error saving policy:', error);
+            const message = error.response?.data?.errorMessage || 'Failed to save policy. Check console for details.';
+            alert(message);
         }
     };
 
@@ -111,7 +119,26 @@ const PolicyEditor = () => {
         if (file) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setFormData({ ...formData, content: e.target.result });
+                const rawFilename = file.name;
+                const nameWithoutExt = rawFilename.replace(/\.rego$/, '');
+
+                // Append timestamp to ensure filename uniqueness
+                // Format: filename_TIMESTAMP.rego to avoid collision
+                const timestamp = new Date().getTime();
+                const uniqueFilename = rawFilename.replace(/(\.rego)?$/, `_${timestamp}$1`); // $1 restores extension if present or adds nothing if not matched correctly (but regex expects .rego)
+                // Actually safer:
+                const extIndex = rawFilename.lastIndexOf('.');
+                const baseName = extIndex !== -1 ? rawFilename.substring(0, extIndex) : rawFilename;
+                const extension = extIndex !== -1 ? rawFilename.substring(extIndex) : '';
+                const uniqueName = `${baseName}_${timestamp}${extension}`;
+
+                setFormData(prev => ({
+                    ...prev,
+                    content: e.target.result,
+                    filename: uniqueName,
+                    // Auto-fill name if empty
+                    name: prev.name ? prev.name : nameWithoutExt
+                }));
             };
             reader.readAsText(file);
         }
@@ -119,13 +146,25 @@ const PolicyEditor = () => {
 
     const handleSyncGit = async () => {
         if (!selectedPolicy?.id) return;
-        // implementation for git sync
-        console.log("Syncing with git...");
-        alert("Git sync functionality coming soon.");
+        try {
+            const response = await policyService.sync(selectedPolicy.id);
+            const updatedPolicy = response.data;
+            setFormData(prev => ({
+                ...prev,
+                content: updatedPolicy.content, // Update content from git
+                lastSyncTime: updatedPolicy.lastSyncTime,
+                syncStatus: updatedPolicy.syncStatus
+            }));
+            await loadPolicies(); // Refresh list to update any status indicators there
+            alert("Policy synced successfully from Git!");
+        } catch (error) {
+            console.error('Error syncing policy:', error);
+            alert("Failed to sync policy. Check console for details.");
+        }
     };
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] gap-6">
+        <div className="flex h-full gap-6">
             {/* Policy List Sidebar */}
             <div className="w-80 card flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -309,14 +348,32 @@ const PolicyEditor = () => {
                                             />
                                         </div>
                                         {selectedPolicy && (
-                                            <button
-                                                onClick={handleSyncGit}
-                                                className="px-3 py-2 bg-slate-800 text-white rounded-md text-xs font-medium hover:bg-slate-700 flex items-center gap-1 mb-[1px]"
-                                            >
-                                                <RefreshCw size={14} />
-                                                Sync
-                                            </button>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <button
+                                                    onClick={handleSyncGit}
+                                                    className="px-3 py-2 bg-slate-800 text-white rounded-md text-xs font-medium hover:bg-slate-700 flex items-center gap-1"
+                                                >
+                                                    <RefreshCw size={14} />
+                                                    Sync Now
+                                                </button>
+                                            </div>
                                         )}
+                                    </div>
+                                    <div className="col-span-3 flex justify-between items-center text-xs text-slate-500 border-t border-slate-200 pt-2 mt-1">
+                                        <div className="flex gap-2">
+                                            <span>Last Sync: </span>
+                                            <span className="font-mono text-slate-700">
+                                                {formData.lastSyncTime ? new Date(formData.lastSyncTime).toLocaleString() : 'Never'}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <span>Status: </span>
+                                            <span className={`font-medium ${(formData.syncStatus || '').startsWith('FAILED') ? 'text-red-600' :
+                                                formData.syncStatus === 'SUCCESS' ? 'text-green-600' : 'text-slate-600'
+                                                }`}>
+                                                {formData.syncStatus || 'Unknown'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             )}

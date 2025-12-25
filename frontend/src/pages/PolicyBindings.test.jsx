@@ -63,8 +63,17 @@ describe('PolicyBindings Component', () => {
         await user.type(screen.getByPlaceholderText('e.g., fine_grained_access'), 'access');
 
         // Select multiple policies
-        const multipleSelect = screen.getByLabelText('Policies (Select Multiple)');
-        await user.selectOptions(multipleSelect, ['authz', 'admin']);
+        // Click the trigger to open MultiSelect
+        const multiSelectTrigger = screen.getByText('Select policies...');
+        await user.click(multiSelectTrigger);
+
+        // Click options
+        const option1 = screen.getByText(/authz/i);
+        await user.click(option1);
+        const option2 = screen.getByText(/admin/i);
+        await user.click(option2);
+
+        // Click outside or just submit (options are selected on click)
 
         // Create
         const createButton = screen.getByText('Create Binding');
@@ -74,7 +83,7 @@ describe('PolicyBindings Component', () => {
             expect(policyBindingService.create).toHaveBeenCalledWith(expect.objectContaining({
                 resourceType: 'DOCUMENT',
                 context: 'access',
-                policyIds: ['authz', 'admin']
+                policyIds: [1, 2] // Expect IDs now
             }));
         });
     });

@@ -23,6 +23,7 @@ public class PolicyService {
     }
 
     public Policy createPolicy(Policy policy) {
+        validatePolicy(policy);
         return policyRepository.save(policy);
     }
 
@@ -34,6 +35,9 @@ public class PolicyService {
         Policy policy = policyRepository.findById(id)
                 .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
                         "Policy not found with id: " + id, "FUNC_007"));
+
+        validatePolicy(policyDetails);
+
         policy.setName(policyDetails.getName());
         policy.setContent(policyDetails.getContent());
         policy.setVersion(policyDetails.getVersion());
@@ -43,8 +47,20 @@ public class PolicyService {
         policy.setGitRepositoryUrl(policyDetails.getGitRepositoryUrl());
         policy.setGitBranch(policyDetails.getGitBranch());
         policy.setGitPath(policyDetails.getGitPath());
+        policy.setFilename(policyDetails.getFilename());
 
         return policyRepository.save(policy);
+    }
+
+    private void validatePolicy(Policy policy) {
+        if (policy.getName() == null || policy.getName().trim().isEmpty()) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Policy name cannot be empty", "VAL_001");
+        }
+        if (policy.getFilename() == null || policy.getFilename().trim().isEmpty()) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Filename cannot be empty", "VAL_002");
+        }
     }
 
     public Policy syncPolicy(Long id) {
