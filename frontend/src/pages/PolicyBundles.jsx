@@ -9,7 +9,9 @@ const PolicyBundles = () => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        bindingIds: []
+        bindingIds: [],
+        wasmEnabled: false,
+        entrypoint: 'allow'
     });
 
     const loadBundles = React.useCallback(async () => {
@@ -41,7 +43,7 @@ const PolicyBundles = () => {
         try {
             await policyBundleService.create(formData);
             setShowModal(false);
-            setFormData({ name: '', description: '', bindingIds: [] });
+            setFormData({ name: '', description: '', bindingIds: [], wasmEnabled: false, entrypoint: 'allow' });
             loadBundles();
         } catch (error) {
             console.error('Error creating bundle:', error);
@@ -98,6 +100,11 @@ const PolicyBundles = () => {
                         <div className="flex items-center gap-2 text-sm text-slate-500">
                             <span className="font-medium text-slate-900">{bundle.bindingIds.length}</span>
                             Bindings Included
+                            {bundle.wasmEnabled && (
+                                <span className="ml-auto px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                    WASM
+                                </span>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -141,6 +148,34 @@ const PolicyBundles = () => {
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         placeholder="Optional description"
                                         className="input-field"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg">
+                                <div className="flex items-center">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.wasmEnabled}
+                                            onChange={(e) => setFormData({ ...formData, wasmEnabled: e.target.checked })}
+                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                        />
+                                        <div>
+                                            <span className="block text-sm font-medium text-slate-900">Enable WASM Optimization</span>
+                                            <span className="block text-xs text-slate-500">Compiles policies to WebAssembly</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label className={`block text-sm font-medium mb-1 ${!formData.wasmEnabled ? 'text-slate-400' : 'text-slate-700'}`}>Entrypoint Rule</label>
+                                    <input
+                                        type="text"
+                                        value={formData.entrypoint}
+                                        onChange={(e) => setFormData({ ...formData, entrypoint: e.target.value })}
+                                        placeholder="e.g., allow"
+                                        className="input-field disabled:bg-slate-100 disabled:text-slate-400"
+                                        disabled={!formData.wasmEnabled}
                                     />
                                 </div>
                             </div>

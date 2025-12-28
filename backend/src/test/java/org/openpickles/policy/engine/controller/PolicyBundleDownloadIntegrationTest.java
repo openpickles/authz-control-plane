@@ -13,6 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
@@ -29,6 +30,9 @@ public class PolicyBundleDownloadIntegrationTest {
 
     @Autowired
     private PolicyBindingRepository policyBindingRepository;
+
+    @Autowired
+    private org.openpickles.policy.engine.repository.PolicyBundleRepository policyBundleRepository;
 
     @BeforeEach
     public void setup() {
@@ -67,5 +71,56 @@ public class PolicyBundleDownloadIntegrationTest {
                 .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/gzip"));
+    }
+
+    @Test
+    public void testDownloadBundle_Wasm_Success() throws Exception {
+        // Create a WASM enabled bundle
+        org.openpickles.policy.engine.model.PolicyBundle bundle = new org.openpickles.policy.engine.model.PolicyBundle();
+        bundle.setName("wasm-bundle");
+        bundle.setWasmEnabled(true);
+        bundle.setEntrypoint("allow");
+
+        PolicyBinding binding = policyBindingRepository.findAll().get(0);
+        bundle.setBindingIds(java.util.List.of(binding.getId()));
+
+        bundle = policyBundleRepository.save(bundle);
+
+        try {
+            mockMvc.perform(get("/api/v1/bundles/" + bundle.getId() + "/download")
+                    .with(user("admin").roles("ADMIN")))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type", "application/gzip"));
+        } catch (Exception e) {
+            // If OPA is missing or fails, we might get an exception.
+            if (e.getCause() instanceof org.openpickles.policy.engine.exception.TechnicalException) {
+                System.out.println("Test skipped or failed due to OPA execution error: " + e.getCause().getMessage());
+                throw e;
+            }
+            throw e;
+        }
+    }
+
+    @Test
+    public void testCreateBundle_Wasm_Invalid_Entrypoint() throws Exception {
+        // We need a binding with a policy to test validation
+        PolicyBinding binding = policyBindingRepository.findAll().get(0);
+
+        org.openpickles.policy.engine.model.PolicyBundle bundle = new org.openpickles.policy.engine.model.PolicyBundle();
+        bundle.setName("invalid-wasm-bundle");
+        bundle.setDescription("Testing invalid entrypoint");
+        bundle.setWasmEnabled(true);
+        bundle.setEntrypoint("non_existent_entrypoint/allow"); // This should fail if package doesn't match or rule
+                                                               // doesn't exist
+        bundle.setBindingIds(java.util.List.of(binding.getId()));
+
+        String bundleJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(bundle);
+
+        mockMvc.perform(post("/api/v1/bundles")
+                .with(user("admin").roles("ADMIN"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(bundleJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FUNC_WASM_INVALID"));
     }
 }

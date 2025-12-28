@@ -276,20 +276,20 @@ const PolicyEditor = () => {
                                         title="Toggle Test Panel"
                                     >
                                         <Play size={16} />
-                                        Test
+                                        Run & Test
                                     </button>
 
                                     <button
                                         onClick={handleValidate}
                                         className={`flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${validationStatus === 'valid' ? 'bg-green-100 text-green-700' :
-                                                validationStatus === 'invalid' ? 'bg-red-100 text-red-700' :
-                                                    'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                                            validationStatus === 'invalid' ? 'bg-red-100 text-red-700' :
+                                                'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                                             }`}
                                     >
                                         {validationStatus === 'valid' ? <CheckCircle size={16} /> :
                                             validationStatus === 'invalid' ? <AlertCircle size={16} /> :
                                                 <CheckCircle size={16} className="text-slate-400" />}
-                                        {validationStatus === 'valid' ? 'Valid' : 'Check'}
+                                        {validationStatus === 'valid' ? 'Valid' : 'Validate Syntax'}
                                     </button>
 
                                     {selectedPolicy && formData.sourceType === 'GIT' && (
