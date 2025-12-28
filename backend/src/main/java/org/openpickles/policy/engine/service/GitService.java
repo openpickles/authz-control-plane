@@ -81,4 +81,53 @@ public class GitService {
             }
         }
     }
+
+    public void pushFileContent(String repoUrl, String branch, String filePath, String content, String message) {
+        Path tempDir = null;
+        try {
+            tempDir = Files.createTempDirectory("policy-engine-git-push");
+
+            // Full clone needed for push? Shallow clone usually fine if depth sufficient or
+            // just pushing top.
+            // But usually for push we want to be careful.
+            try (Git git = Git.cloneRepository()
+                    .setURI(repoUrl)
+                    .setDirectory(tempDir.toFile())
+                    .setBranch(branch)
+                    .call()) {
+
+                // Write content to file
+                File file = new File(tempDir.toFile(), filePath);
+                // Ensure parent dirs exist
+                file.getParentFile().mkdirs();
+                Files.write(file.toPath(), content.getBytes());
+
+                // Add
+                git.add().addFilepattern(filePath).call();
+
+                // Commit
+                // TODO: Author/Committer identification
+                git.commit().setMessage(message).call();
+
+                // Push
+                // Note: Auth is tricky here without credentials.
+                // Assuming SSH agent or .netrc or HTTP creds if URL has them.
+                // If the user provided credentials in URL (https://user:pass@...), it works.
+                // Otherwise JGit needs CredentialsProvider.
+                // For now, relying on environment or URL embedding as per plan.
+                git.push().call();
+            }
+        } catch (Exception e) {
+            throw new org.openpickles.policy.engine.exception.TechnicalException(
+                    "Failed to push file to Git: " + e.getMessage(), "TECH_003", e);
+        } finally {
+            if (tempDir != null) {
+                try {
+                    FileSystemUtils.deleteRecursively(tempDir);
+                } catch (IOException e) {
+                    System.err.println("Failed to clean up temp dir: " + e.getMessage());
+                }
+            }
+        }
+    }
 }

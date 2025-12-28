@@ -91,6 +91,33 @@ public class PolicyService {
         return policyRepository.save(policy);
     }
 
+    public void pushToGit(Long id, String commitMessage) {
+        Policy policy = policyRepository.findById(id)
+                .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
+                        "Policy not found with id: " + id, "FUNC_007"));
+
+        if (policy.getSourceType() != Policy.SourceType.GIT) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Policy is not configured for Git sync", "FUNC_008");
+        }
+
+        try {
+            gitService.pushFileContent(
+                    policy.getGitRepositoryUrl(),
+                    policy.getGitBranch(),
+                    policy.getGitPath(),
+                    policy.getContent(),
+                    commitMessage);
+            policy.setLastSyncTime(LocalDateTime.now());
+            policy.setSyncStatus("SUCCESS (Pushed)");
+            policyRepository.save(policy);
+        } catch (Exception e) {
+            policy.setSyncStatus("PUSH FAILED: " + e.getMessage());
+            policyRepository.save(policy);
+            throw e;
+        }
+    }
+
     public void deletePolicy(Long id) {
         policyRepository.deleteById(id);
     }

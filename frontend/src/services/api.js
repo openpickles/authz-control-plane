@@ -16,6 +16,12 @@ export const policyService = {
     update: (id, policy) => api.put(`/policies/${id}`, policy),
     delete: (id) => api.delete(`/policies/${id}`),
     sync: (id) => api.post(`/policies/${id}/sync`),
+    push: (id, commitMessage) => api.post(`/policies/${id}/push`, { commitMessage }),
+};
+
+export const evaluationService = {
+    validate: (content) => api.post('/evaluation/validate', { content }),
+    test: (testRequest) => api.post('/evaluation/test', testRequest),
 };
 
 export const entitlementService = {

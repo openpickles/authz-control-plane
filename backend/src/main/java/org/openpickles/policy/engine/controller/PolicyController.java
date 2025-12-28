@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/policies")
@@ -40,6 +41,13 @@ public class PolicyController {
     @PostMapping("/{id}/sync")
     public ResponseEntity<Policy> syncPolicy(@PathVariable Long id) {
         return ResponseEntity.ok(policyService.syncPolicy(id));
+    }
+
+    @PostMapping("/{id}/push")
+    public ResponseEntity<Void> pushPolicy(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String message = body.getOrDefault("commitMessage", "Update policy from Policy Engine");
+        policyService.pushToGit(id, message);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
