@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, Code, FileText, CheckCircle, AlertCircle, Upload, RefreshCw, GitBranch, Play, UploadCloud } from 'lucide-react';
+import { Plus, Save, Trash2, Code, FileText, CheckCircle, AlertCircle, Upload, RefreshCw, GitBranch, Play, UploadCloud, Search } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 
 import { policyService, evaluationService } from '../services/api';
@@ -29,17 +29,21 @@ const PolicyEditor = () => {
         syncStatus: null
     });
 
+    const [search, setSearch] = useState('');
+
     const loadPolicies = React.useCallback(async () => {
         try {
-            const response = await policyService.getAll();
-            setPolicies(response.data);
+            const response = await policyService.getAll({ size: 100, search });
+            const data = response.data.content || (Array.isArray(response.data) ? response.data : []);
+            setPolicies(data);
         } catch (error) {
             console.error('Error loading policies:', error);
         }
-    }, []);
+    }, [search]);
 
     useEffect(() => {
-        loadPolicies();
+        const timer = setTimeout(() => loadPolicies(), 300); // Debounce search
+        return () => clearTimeout(timer);
     }, [loadPolicies]);
 
     const handleSelectPolicy = (policy) => {
@@ -192,14 +196,28 @@ const PolicyEditor = () => {
         <div className="flex h-full gap-6">
             {/* Policy List Sidebar */}
             <div className="w-80 card flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                        <FileText size={18} className="text-brand-600" />
-                        Policies
-                    </h3>
-                    <button onClick={handleCreateNew} className="p-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors shadow-sm" title="New Policy">
-                        <Plus size={18} />
-                    </button>
+                <div className="p-4 border-b border-slate-200 bg-slate-50 space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                            <FileText size={18} className="text-brand-600" />
+                            Policies
+                        </h3>
+                        <button onClick={handleCreateNew} className="p-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors shadow-sm" title="New Policy">
+                            <Plus size={18} />
+                        </button>
+                    </div>
+                    <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <Search size={14} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search policies..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="block w-full rounded-md border-0 py-1.5 pl-9 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-xs sm:leading-6"
+                        />
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-white">
                     {policies.map((policy) => (

@@ -22,6 +22,14 @@ public class PolicyService {
         return policyRepository.findAll();
     }
 
+    public org.springframework.data.domain.Page<Policy> getAllPolicies(
+            org.springframework.data.domain.Pageable pageable, String search) {
+        if (search != null && !search.trim().isEmpty()) {
+            return policyRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        }
+        return policyRepository.findAll(pageable);
+    }
+
     public Policy createPolicy(Policy policy) {
         validatePolicy(policy);
         return policyRepository.save(policy);

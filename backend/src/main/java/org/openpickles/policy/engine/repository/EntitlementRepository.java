@@ -15,4 +15,7 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, Long> 
 
     List<Entitlement> findByResourceTypeAndSubjectTypeAndSubjectId(String resourceType,
             Entitlement.SubjectType subjectType, String subjectId);
+
+    org.springframework.data.domain.Page<Entitlement> findBySubjectIdContainingIgnoreCaseOrResourceTypeContainingIgnoreCase(
+            String subjectId, String resourceType, org.springframework.data.domain.Pageable pageable);
 }

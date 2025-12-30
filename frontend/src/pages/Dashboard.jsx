@@ -1,7 +1,8 @@
 import React from 'react';
 import { Shield, Users, Activity, AlertTriangle, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
 
-const StatCard = ({ title, value, trend, trendUp, icon: StatIcon, colorClass }) => (
+// eslint-disable-next-line no-unused-vars
+const StatCard = ({ title, value, trend, trendUp, icon: Icon, colorClass }) => (
     <div className="card p-6 hover:shadow-card-hover transition-shadow">
         <div className="flex items-start justify-between">
             <div>
@@ -9,7 +10,7 @@ const StatCard = ({ title, value, trend, trendUp, icon: StatIcon, colorClass }) 
                 <h3 className="text-3xl font-bold text-slate-900 mt-2">{value}</h3>
             </div>
             <div className={`p-3 rounded-lg ${colorClass} bg-opacity-10`}>
-                <StatIcon size={24} className={colorClass.replace('bg-', 'text-')} />
+                <Icon size={24} className={colorClass.replace('bg-', 'text-')} />
             </div>
         </div>
         <div className="mt-4 flex items-center text-sm">

@@ -17,8 +17,11 @@ public class PolicyController {
     private PolicyService policyService;
 
     @GetMapping
-    public List<Policy> getAllPolicies() {
-        return policyService.getAllPolicies();
+    public org.springframework.data.domain.Page<Policy> getAllPolicies(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        return policyService.getAllPolicies(org.springframework.data.domain.PageRequest.of(page, size), search);
     }
 
     @PostMapping

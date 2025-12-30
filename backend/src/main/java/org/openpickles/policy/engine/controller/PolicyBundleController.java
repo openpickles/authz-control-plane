@@ -44,9 +44,16 @@ public class PolicyBundleController {
     private EntitlementRepository entitlementRepository;
 
     @GetMapping
-    public List<PolicyBundle> getAllBundles() {
-        logger.debug("Fetching all bundles");
-        return bundleRepository.findAll();
+    public org.springframework.data.domain.Page<PolicyBundle> getAllBundles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        logger.debug("Fetching bundles, page: {}, size: {}, search: {}", page, size, search);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        if (search != null && !search.trim().isEmpty()) {
+            return bundleRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        }
+        return bundleRepository.findAll(pageable);
     }
 
     @PostMapping

@@ -16,8 +16,18 @@ public class EntitlementService {
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EntitlementService.class);
 
+    public org.springframework.data.domain.Page<Entitlement> getAllEntitlements(
+            org.springframework.data.domain.Pageable pageable, String search) {
+        logger.debug("Fetching all entitlements, search: {}", search);
+        if (search != null && !search.trim().isEmpty()) {
+            return entitlementRepository.findBySubjectIdContainingIgnoreCaseOrResourceTypeContainingIgnoreCase(
+                    search.trim(), search.trim(), pageable);
+        }
+        return entitlementRepository.findAll(pageable);
+    }
+
     public List<Entitlement> getAllEntitlements() {
-        logger.debug("Fetching all entitlements");
+        logger.debug("Fetching all entitlements (unpaged)");
         return entitlementRepository.findAll();
     }
 

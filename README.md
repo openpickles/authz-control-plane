@@ -9,11 +9,13 @@ A reference implementation of a centralized authorization system for managing OP
 - **Centralized Policy Management**: Create, edit, and version OPA (Rego) policies.
 - **Enhanced Authoring**: Professional editor (Monaco) with syntax highlighting and direct **File Upload** support.
 - **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
-- **Entitlement Management**: Define fine-grained access control rules (User/Role/Group).
+- **Entitlement Management**: Define fine-grained access control rules (User/Role/Group) with **Server-Side Pagination** and **Search**.
 - **Entitlement Sync**: Batch push/upsert entitlements from external domain services.
+- **Resource Provider Integration**: Register and manage microservices with **Dynamic Filter Schema** support.
 - **Dynamic Bundle Download**: Download policies tailored to specific resource types (e.g., `?resourceTypes=DOCUMENT`).
 - **Policy Metadata**: Policies now support `description` and `filename` metadata for better organization.
 - **Multi-Policy Binding**: Bind multiple policies to a single context, allowing modular policy composition.
+- **Modern & Consistent UI**: Standardized "DataGrid" and "SlideOver" components across all listing pages.
 
 ## Testing
 

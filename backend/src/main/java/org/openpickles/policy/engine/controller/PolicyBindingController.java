@@ -22,9 +22,19 @@ public class PolicyBindingController {
     @Autowired
     private PolicyRepository policyRepository;
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PolicyBindingController.class);
+
     @GetMapping
-    public List<PolicyBinding> getAllBindings() {
-        return repository.findAll();
+    public org.springframework.data.domain.Page<PolicyBinding> getAllBindings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        logger.debug("Fetching bindings, page: {}, size: {}, search: {}", page, size, search);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        if (search != null && !search.trim().isEmpty()) {
+            return repository.findByResourceTypeContainingIgnoreCase(search.trim(), pageable);
+        }
+        return repository.findAll(pageable);
     }
 
     @GetMapping("/search")
