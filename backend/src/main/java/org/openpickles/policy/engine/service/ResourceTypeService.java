@@ -11,9 +11,14 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class ResourceTypeService {
+
+    private static final int MAX_SCHEMA_SIZE = 100 * 1024; // 100KB
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private ResourceTypeRepository repository;
@@ -32,7 +37,9 @@ public class ResourceTypeService {
     }
 
     public ResourceType createResourceType(ResourceType resourceType) {
-        // Validation could go here
+        if (resourceType.getSchema() != null) {
+            validateSchema(resourceType.getSchema());
+        }
         return repository.save(resourceType);
     }
 
@@ -50,6 +57,7 @@ public class ResourceTypeService {
         // Only update schema if provided (manual update), otherwise keep existing or
         // rely on refresh
         if (details.getSchema() != null) {
+            validateSchema(details.getSchema());
             existing.setSchema(details.getSchema());
         }
 
@@ -82,15 +90,63 @@ public class ResourceTypeService {
 
         String url = type.getBaseUrl() + type.getMetadataEndpoint();
         try {
-            // We fetch as String to store exactly what they return (or we could fetch
-            // Object and serialize)
-            // Fetching as String is safer for storage
+            // Fetch with size limit check
+            // Note: RestTemplate.getForObject loads entire response into memory.
+            // For rigorous size protection against huge payloads, we should use execute()
+            // with a ResponseExtractor.
+            // Simplified check after fetch for now as we don't expect GBs. 100KB limit.
+
+            // Better approach: HEAD request first to check Content-Length?
+            // Or just fetch and check string length.
             String schemaJson = restTemplate.getForObject(url, String.class);
+
+            if (schemaJson != null && schemaJson.length() > MAX_SCHEMA_SIZE) {
+                throw new RuntimeException("Remote schema too large. Limit is " + MAX_SCHEMA_SIZE + " bytes.");
+            }
+
+            validateSchema(schemaJson);
+
             type.setSchema(schemaJson);
             repository.save(type);
             return schemaJson;
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch schema from provider: " + e.getMessage(), e);
+        }
+    }
+
+    private void validateSchema(String schemaJson) {
+        if (schemaJson == null || schemaJson.isBlank())
+            return;
+
+        if (schemaJson.length() > MAX_SCHEMA_SIZE) {
+            throw new RuntimeException("Schema too large. Limit is " + MAX_SCHEMA_SIZE + " bytes.");
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(schemaJson);
+
+            // 1. Structure Check
+            if (!root.isObject() || !root.has("attributes") || !root.get("attributes").isArray()) {
+                throw new RuntimeException("Invalid schema structure. Must contain 'attributes' array.");
+            }
+
+            // 2. Attribute Validation
+            for (JsonNode attr : root.get("attributes")) {
+                if (!attr.has("name") || !attr.has("type") || !attr.has("pii")) {
+                    throw new RuntimeException("Missing required attribute fields: name, type, pii");
+                }
+
+                String name = attr.get("name").asText();
+                if (!name.matches("^[a-zA-Z0-9_]+$")) {
+                    throw new RuntimeException("Invalid attribute name: " + name + ". Must be alphanumeric.");
+                }
+
+                // Type Check (optional, extendable)
+                // String type = attr.get("type").asText();
+            }
+
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("Invalid JSON format", e);
         }
     }
 

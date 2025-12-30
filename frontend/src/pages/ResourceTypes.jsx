@@ -354,22 +354,148 @@ const ResourceTypes = () => {
                             </div>
                         )}
 
-                        <div>
-                            <label htmlFor="jsonSchema" className="block text-sm font-medium text-slate-700 mb-2">
-                                JSON Schema
-                                {definitionMode === 'EXTERNAL' && <span className="ml-2 text-xs text-slate-400 font-normal">(Read-only when External)</span>}
-                            </label>
-                            <textarea
-                                id="jsonSchema"
-                                className="input-field font-mono text-xs bg-slate-900 text-slate-50"
-                                rows="10"
-                                readOnly={definitionMode === 'EXTERNAL'}
-                                placeholder='{ "filters": [...] }'
-                                value={formData.schema}
-                                onChange={(e) => setFormData({ ...formData, schema: e.target.value })}
-                            />
-                            <p className="mt-1 text-xs text-slate-500">Defines the filters available for this resource type.</p>
-                        </div>
+                        {definitionMode === 'MANUAL' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-sm font-medium text-slate-700">Attributes</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const currentSchema = formData.schema ? JSON.parse(formData.schema) : { attributes: [] };
+                                            const newAttributes = [...(currentSchema.attributes || []), { name: '', type: 'String', pii: false, description: '' }];
+                                            setFormData({ ...formData, schema: JSON.stringify({ ...currentSchema, attributes: newAttributes }, null, 2) });
+                                        }}
+                                        className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        <Plus size={14} /> Add Attribute
+                                    </button>
+                                </div>
+
+                                <div className="border rounded-md overflow-hidden">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">PII</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Desc</th>
+                                                <th className="px-3 py-2"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {(() => {
+                                                let attributes = [];
+                                                try {
+                                                    const parsed = formData.schema ? JSON.parse(formData.schema) : {};
+                                                    attributes = parsed.attributes || [];
+                                                } catch (e) {
+                                                    console.debug('JSON parse error in schema builder:', e);
+                                                    // Fallback if invalid JSON
+                                                    return <tr><td colSpan="5" className="p-2 text-red-500 text-xs">Invalid JSON schema. Clear to reset.</td></tr>;
+                                                }
+
+                                                if (attributes.length === 0) {
+                                                    return <tr><td colSpan="5" className="p-4 text-center text-xs text-gray-400">No attributes defined.</td></tr>;
+                                                }
+
+                                                return attributes.map((attr, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="text"
+                                                                className="input-field text-xs py-1"
+                                                                value={attr.name}
+                                                                placeholder="e.g. panCard"
+                                                                onChange={(e) => {
+                                                                    const newAttrs = [...attributes];
+                                                                    newAttrs[idx].name = e.target.value;
+                                                                    setFormData({ ...formData, schema: JSON.stringify({ attributes: newAttrs }, null, 2) });
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <select
+                                                                className="input-field text-xs py-1"
+                                                                value={attr.type}
+                                                                onChange={(e) => {
+                                                                    const newAttrs = [...attributes];
+                                                                    newAttrs[idx].type = e.target.value;
+                                                                    setFormData({ ...formData, schema: JSON.stringify({ attributes: newAttrs }, null, 2) });
+                                                                }}
+                                                            >
+                                                                <option value="String">String</option>
+                                                                <option value="Number">Number</option>
+                                                                <option value="Boolean">Boolean</option>
+                                                                <option value="Date">Date</option>
+                                                                <option value="List">List</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                                                checked={attr.pii || false}
+                                                                onChange={(e) => {
+                                                                    const newAttrs = [...attributes];
+                                                                    newAttrs[idx].pii = e.target.checked;
+                                                                    setFormData({ ...formData, schema: JSON.stringify({ attributes: newAttrs }, null, 2) });
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="text"
+                                                                className="input-field text-xs py-1"
+                                                                value={attr.description || ''}
+                                                                placeholder="Optional"
+                                                                onChange={(e) => {
+                                                                    const newAttrs = [...attributes];
+                                                                    newAttrs[idx].description = e.target.value;
+                                                                    setFormData({ ...formData, schema: JSON.stringify({ attributes: newAttrs }, null, 2) });
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newAttrs = attributes.filter((_, i) => i !== idx);
+                                                                    setFormData({ ...formData, schema: JSON.stringify({ attributes: newAttrs }, null, 2) });
+                                                                }}
+                                                                className="text-gray-400 hover:text-red-500"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ));
+                                            })()}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Define attributes for this resource. Mark <strong>PII</strong> for sensitive data.
+                                </p>
+                            </div>
+                        )}
+
+                        {definitionMode === 'EXTERNAL' && (
+                            <div>
+                                <label htmlFor="jsonSchema" className="block text-sm font-medium text-slate-700 mb-2">
+                                    JSON Schema Preview
+                                    <span className="ml-2 text-xs text-slate-400 font-normal">(Read-only)</span>
+                                </label>
+                                <textarea
+                                    id="jsonSchema"
+                                    className="input-field font-mono text-xs bg-slate-900 text-slate-50"
+                                    rows="10"
+                                    readOnly={true}
+                                    placeholder='{ "attributes": [...] }'
+                                    value={formData.schema}
+                                />
+                                <p className="mt-1 text-xs text-slate-500">Fetched from external provider.</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-3 pt-6 border-t">

@@ -43,6 +43,9 @@ public class PolicyBundleController {
     @Autowired
     private EntitlementRepository entitlementRepository;
 
+    @Autowired
+    private org.openpickles.policy.engine.repository.ResourceTypeRepository resourceTypeRepository;
+
     @GetMapping
     public org.springframework.data.domain.Page<PolicyBundle> getAllBundles(
             @RequestParam(defaultValue = "0") int page,
@@ -100,18 +103,29 @@ public class PolicyBundleController {
                     .collect(Collectors.toSet());
             List<Policy> policies = policyRepository.findAllById(policyIds);
 
-            Set<String> resourceTypes = bindings.stream()
+            Set<String> resourceTypeKeys = bindings.stream()
                     .map(PolicyBinding::getResourceType)
                     .collect(Collectors.toSet());
             List<Entitlement> allEntitlements = entitlementRepository.findAll();
             List<Entitlement> filteredEntitlements = allEntitlements.stream()
-                    .filter(e -> resourceTypes.contains(e.getResourceType()))
+                    .filter(e -> resourceTypeKeys.contains(e.getResourceType()))
+                    .collect(Collectors.toList());
+
+            // 1.1 Fetch Resource Types
+            // We want to include the definitions for the resource types used in the
+            // bindings
+            // This allows the policy to access metadata (like PII flags) defined in the
+            // schema
+            List<org.openpickles.policy.engine.model.ResourceType> allResourceTypes = resourceTypeRepository.findAll();
+            List<org.openpickles.policy.engine.model.ResourceType> filteredResourceTypes = allResourceTypes.stream()
+                    .filter(rt -> resourceTypeKeys.contains(rt.getKey()))
                     .collect(Collectors.toList());
 
             // 2. Prepare Data JSON
             Map<String, Object> dataJson = new HashMap<>();
             dataJson.put("bindings", bindings);
             dataJson.put("entitlements", filteredEntitlements);
+            dataJson.put("resource_types", filteredResourceTypes); // Inject Resource Types
             String jsonContent = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(dataJson);
 
             if (wasmEnabled) {
