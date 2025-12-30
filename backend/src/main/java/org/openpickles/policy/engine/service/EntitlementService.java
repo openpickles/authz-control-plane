@@ -2,6 +2,7 @@ package org.openpickles.policy.engine.service;
 
 import org.openpickles.policy.engine.model.Entitlement;
 import org.openpickles.policy.engine.repository.EntitlementRepository;
+import org.openpickles.policy.engine.aop.Auditable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,7 @@ public class EntitlementService {
         return entitlementRepository.findAll();
     }
 
+    @Auditable(action = "CREATE", resourceType = "ENTITLEMENT")
     public Entitlement createEntitlement(Entitlement entitlement) {
         logger.info("Creating entitlement for subject: {}", entitlement.getSubjectId());
         return entitlementRepository.save(entitlement);
@@ -50,6 +52,7 @@ public class EntitlementService {
         return entitlementRepository.findBySubjectTypeAndSubjectId(subjectType, subjectId);
     }
 
+    @Auditable(action = "UPDATE", resourceType = "ENTITLEMENT")
     public Entitlement updateEntitlement(Long id, Entitlement entitlementDetails) {
         logger.info("Updating entitlement: {}", id);
         Entitlement entitlement = entitlementRepository.findById(id)
@@ -65,11 +68,13 @@ public class EntitlementService {
         return entitlementRepository.save(entitlement);
     }
 
+    @Auditable(action = "DELETE", resourceType = "ENTITLEMENT")
     public void deleteEntitlement(Long id) {
         logger.info("Deleting entitlement: {}", id);
         entitlementRepository.deleteById(id);
     }
 
+    @Auditable(action = "BATCH_UPSERT", resourceType = "ENTITLEMENT")
     public List<Entitlement> batchUpsert(List<Entitlement> entitlements) {
         return entitlements.stream().map(incoming -> {
             // Find existing entitlement by business key

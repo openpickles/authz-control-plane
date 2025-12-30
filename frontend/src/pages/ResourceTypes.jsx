@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Server, Plus, Trash2, Globe, RefreshCw, PenSquare, Eye } from 'lucide-react';
+import { Plus, Trash2, Globe, RefreshCw, PenSquare } from 'lucide-react';
 import { resourceTypeService } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import SlideOver from '../components/SlideOver';
@@ -124,7 +124,7 @@ const ResourceTypes = () => {
             if (isEditing) {
                 await resourceTypeService.update(editId, formData);
             } else {
-                const response = await resourceTypeService.create(formData);
+                await resourceTypeService.create(formData);
                 // If External mode and we just created, we might want to prompt fetch?
             }
             setShowCreate(false);
@@ -235,8 +235,9 @@ const ResourceTypes = () => {
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-slate-900 border-b pb-2">Identity</h3>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700">Display Name</label>
+                            <label htmlFor="displayName" className="block text-sm font-medium text-slate-700">Display Name</label>
                             <input
+                                id="displayName"
                                 type="text"
                                 required
                                 className="input-field mt-1"
@@ -246,12 +247,13 @@ const ResourceTypes = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700">Unique Key</label>
+                            <label htmlFor="uniqueKey" className="block text-sm font-medium text-slate-700">Unique Key</label>
                             <div className="mt-1 flex rounded-md shadow-sm">
                                 <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-500 text-sm">
                                     Type
                                 </span>
                                 <input
+                                    id="uniqueKey"
                                     type="text"
                                     required
                                     className="input-field rounded-l-none"
@@ -263,8 +265,9 @@ const ResourceTypes = () => {
                             <p className="mt-1 text-xs text-slate-500">Used in policies and entitlements.</p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700">Description</label>
+                            <label htmlFor="description" className="block text-sm font-medium text-slate-700">Description</label>
                             <textarea
+                                id="description"
                                 className="input-field mt-1"
                                 rows="2"
                                 value={formData.description}
@@ -298,8 +301,9 @@ const ResourceTypes = () => {
                         {definitionMode === 'EXTERNAL' && (
                             <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700">Base URL</label>
+                                    <label htmlFor="baseUrl" className="block text-sm font-medium text-slate-700">Base URL</label>
                                     <input
+                                        id="baseUrl"
                                         type="url"
                                         required={definitionMode === 'EXTERNAL'}
                                         className="input-field mt-1"
@@ -310,8 +314,9 @@ const ResourceTypes = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700">Metadata Endpoint</label>
+                                        <label htmlFor="metadataEndpoint" className="block text-sm font-medium text-slate-700">Metadata Endpoint</label>
                                         <input
+                                            id="metadataEndpoint"
                                             type="text"
                                             className="input-field mt-1"
                                             placeholder="/api/metadata"
@@ -320,8 +325,9 @@ const ResourceTypes = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700">Data Endpoint</label>
+                                        <label htmlFor="dataEndpoint" className="block text-sm font-medium text-slate-700">Data Endpoint</label>
                                         <input
+                                            id="dataEndpoint"
                                             type="text"
                                             className="input-field mt-1"
                                             placeholder="/api/loans"
@@ -349,11 +355,12 @@ const ResourceTypes = () => {
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                            <label htmlFor="jsonSchema" className="block text-sm font-medium text-slate-700 mb-2">
                                 JSON Schema
                                 {definitionMode === 'EXTERNAL' && <span className="ml-2 text-xs text-slate-400 font-normal">(Read-only when External)</span>}
                             </label>
                             <textarea
+                                id="jsonSchema"
                                 className="input-field font-mono text-xs bg-slate-900 text-slate-50"
                                 rows="10"
                                 readOnly={definitionMode === 'EXTERNAL'}

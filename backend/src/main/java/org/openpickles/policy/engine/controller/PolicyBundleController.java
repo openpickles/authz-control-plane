@@ -175,13 +175,8 @@ public class PolicyBundleController {
         try {
             // Fetch policies to validate them
             List<PolicyBinding> bindings = bindingRepository.findAllById(bundle.getBindingIds());
-            if (bindings.isEmpty()) {
-                // If there are no bindings, technically it's a valid empty bundle, but WASM
-                // build might fail if empty?
-                // OPA build on empty dir might be weird. Let's allow it but check policies if
-                // present.
-                if (bundle.getBindingIds().isEmpty())
-                    return;
+            if (bindings.isEmpty() && bundle.getBindingIds().isEmpty()) {
+                return;
             }
 
             Set<Long> policyIds = bindings.stream()
@@ -212,66 +207,15 @@ public class PolicyBundleController {
         try {
             tempDir = Files.createTempDirectory("opa-build");
 
-            // Write data.json
             Files.write(tempDir.resolve("data.json"), jsonContent.getBytes(), StandardOpenOption.CREATE);
 
-            // Write policies and collect entrypoints
-            List<String> entrypoints = new ArrayList<>();
-            for (Policy policy : policies) {
-                String content = policy.getContent() != null ? policy.getContent() : "";
-                String filename = policy.getFilename() != null ? policy.getFilename()
-                        : "policy-" + policy.getId() + ".rego";
-                Path policyPath = tempDir.resolve(new java.io.File(filename).getName());
-                Files.write(policyPath, content.getBytes(), StandardOpenOption.CREATE);
-
-                String packageName = findPackageName(content);
-                if (packageName != null) {
-                    String epName = (entrypoint != null && !entrypoint.isEmpty()) ? entrypoint : "allow";
-                    entrypoints.add(packageName.replace(".", "/") + "/" + epName);
-                }
-            }
+            List<String> entrypoints = preparePolicyFiles(policies, tempDir, entrypoint);
 
             if (entrypoints.isEmpty()) {
                 logger.warn("No package names found in policies. WASM build might fail.");
             }
 
-            List<String> command = new ArrayList<>();
-            command.add("opa");
-            command.add("build");
-            command.add("-t");
-            command.add("wasm");
-            command.add("-o");
-            command.add("bundle.tar.gz");
-            command.add("-b");
-            command.add(".");
-            for (String ep : entrypoints) {
-                command.add("-e");
-                command.add(ep);
-            }
-
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(tempDir.toFile());
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                    logger.debug("OPA Output: {}", line);
-                }
-            }
-
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                logger.error("OPA Build Failed. Output:\n{}", output);
-                throw new org.openpickles.policy.engine.exception.TechnicalException(
-                        "OPA build failed with exit code " + exitCode + ". Output: " + output.toString(),
-                        "TECH_OPA_FAIL");
-            }
-
-            return Files.readAllBytes(tempDir.resolve("bundle.tar.gz"));
+            return executeOpaBuild(tempDir, entrypoints);
 
         } catch (org.openpickles.policy.engine.exception.TechnicalException te) {
             throw te;
@@ -286,6 +230,86 @@ public class PolicyBundleController {
                 }
             }
         }
+    }
+
+    private List<String> preparePolicyFiles(List<Policy> policies, Path tempDir, String entrypoint)
+            throws java.io.IOException {
+        List<String> entrypoints = new ArrayList<>();
+        for (Policy policy : policies) {
+            String content = policy.getContent() != null ? policy.getContent() : "";
+
+            // Sanitize filename to prevent path traversal
+            String rawFilename = policy.getFilename() != null ? policy.getFilename()
+                    : "policy-" + policy.getId() + ".rego";
+            String safeFilename = java.nio.file.Paths.get(rawFilename).getFileName().toString();
+
+            Path policyPath = tempDir.resolve(safeFilename).normalize();
+            if (!policyPath.startsWith(tempDir)) {
+                throw new SecurityException("Path traversal attempt detected: " + rawFilename);
+            }
+
+            Files.write(policyPath, content.getBytes(), StandardOpenOption.CREATE);
+
+            String packageName = findPackageName(content);
+            if (packageName != null) {
+                // Validate entrypoint if provided, otherwise default to 'allow'
+                String epName = "allow";
+                if (entrypoint != null && !entrypoint.isEmpty()) {
+                    if (!entrypoint.matches("^\\w+$")) {
+                        throw new SecurityException("Invalid entrypoint format");
+                    }
+                    epName = entrypoint;
+                }
+                entrypoints.add(packageName.replace(".", "/") + "/" + epName);
+            }
+        }
+        return entrypoints;
+    }
+
+    private byte[] executeOpaBuild(Path tempDir, List<String> entrypoints)
+            throws java.io.IOException, InterruptedException {
+        List<String> command = new ArrayList<>();
+        command.add("opa");
+        command.add("build");
+        command.add("-t");
+        command.add("wasm");
+        command.add("-o");
+        command.add("bundle.tar.gz");
+        command.add("-b");
+        command.add(".");
+        for (String ep : entrypoints) {
+            command.add("-e");
+            command.add(ep);
+        }
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.directory(tempDir.toFile());
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+                logger.debug("OPA Output: {}", line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            logger.error("OPA Build Failed. Output:\n{}", output);
+            throw new org.openpickles.policy.engine.exception.TechnicalException(
+                    "OPA build failed with exit code " + exitCode + ". Output: " + output.toString(),
+                    "TECH_OPA_FAIL");
+        }
+
+        Path bundlePath = tempDir.resolve("bundle.tar.gz");
+        if (!Files.exists(bundlePath)) {
+            throw new org.openpickles.policy.engine.exception.TechnicalException(
+                    "OPA build succeeded but bundle.tar.gz not found", "TECH_OPA_NO_OUTPUT");
+        }
+        return Files.readAllBytes(bundlePath);
     }
 
     private String findPackageName(String content) {

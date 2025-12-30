@@ -15,6 +15,15 @@ public class SecurityConfig {
     @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.security.web.authentication.AuthenticationSuccessHandler successHandler;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.security.web.authentication.AuthenticationFailureHandler failureHandler;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.security.web.authentication.logout.LogoutSuccessHandler logoutSuccessHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -25,7 +34,13 @@ public class SecurityConfig {
                                                                                                  // static assets
                         .requestMatchers("/api/v1/sync/**").permitAll() // Public sync API
                         .anyRequest().authenticated())
-                .formLogin(withDefaults()) // Enable default login page
+                .formLogin(form -> form
+                        .successHandler(successHandler)
+                        .failureHandler(failureHandler)
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutSuccessHandler(logoutSuccessHandler)
+                        .permitAll())
                 .httpBasic(withDefaults()) // Enable Basic Auth for API testing
                 .headers(headers -> headers.frameOptions(frame -> frame.disable())); // For H2 Console
 

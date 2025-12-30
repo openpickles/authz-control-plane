@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Shield, Users, Settings, LogOut, Server, Menu, Bell, Search, ChevronRight, Link as LinkIcon, Package } from 'lucide-react';
+import { LayoutDashboard, Shield, Users, Settings, LogOut, Server, Menu, Bell, Search, ChevronRight, Link as LinkIcon, Package, ShieldCheck } from 'lucide-react';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -14,6 +14,7 @@ const Layout = ({ children }) => {
         { path: '/policy-bindings', icon: LinkIcon, label: 'Policy Bindings' },
         { path: '/policy-bundles', icon: Package, label: 'Policy Bundles' },
         { path: '/resource-types', icon: Server, label: 'Resource Types' },
+        { path: '/audit', icon: ShieldCheck, label: 'Audit Logs' },
         { path: '/settings', icon: Settings, label: 'Settings' },
     ];
 
