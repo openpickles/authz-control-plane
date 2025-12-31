@@ -46,7 +46,7 @@ const TestPanel = ({ policyContent, policyId }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 border-l border-slate-200 w-96 flex-shrink-0 animate-in slide-in-from-right duration-200">
+        <div className="flex flex-col h-full bg-slate-50 w-full animate-in slide-in-from-right duration-200">
             <div className="p-3 border-b border-slate-200 bg-white flex justify-between items-center">
                 <h3 className="font-bold text-slate-700">Test Policy</h3>
                 <button
