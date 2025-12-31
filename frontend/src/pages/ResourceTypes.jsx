@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Globe, RefreshCw, PenSquare } from 'lucide-react';
+import HelpButton from '../components/common/HelpButton';
 import { resourceTypeService } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import SlideOver from '../components/SlideOver';
@@ -203,13 +204,16 @@ const ResourceTypes = () => {
                         Define domain data types and their metadata filters.
                     </p>
                 </div>
-                <button
-                    onClick={() => { resetForm(); setShowCreate(true); }}
-                    className="btn-primary flex items-center gap-2"
-                >
-                    <Plus size={16} />
-                    Register Type
-                </button>
+                <div className="flex items-center gap-3">
+                    <HelpButton topic="resource_types" />
+                    <button
+                        onClick={() => { resetForm(); setShowCreate(true); }}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        <Plus size={16} />
+                        Register Type
+                    </button>
+                </div>
             </div>
 
             <DataGrid
