@@ -18,9 +18,13 @@ public class EntitlementController {
     private EntitlementService entitlementService;
 
     @GetMapping
-    public List<Entitlement> getAllEntitlements() {
-        logger.debug("Request to get all entitlements");
-        return entitlementService.getAllEntitlements();
+    public org.springframework.data.domain.Page<Entitlement> getAllEntitlements(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        logger.debug("Request to get all entitlements, page: {}, size: {}, search: {}", page, size, search);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return entitlementService.getAllEntitlements(pageable, search);
     }
 
     @PostMapping

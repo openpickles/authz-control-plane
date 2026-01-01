@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/policies")
@@ -16,8 +17,11 @@ public class PolicyController {
     private PolicyService policyService;
 
     @GetMapping
-    public List<Policy> getAllPolicies() {
-        return policyService.getAllPolicies();
+    public org.springframework.data.domain.Page<Policy> getAllPolicies(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        return policyService.getAllPolicies(org.springframework.data.domain.PageRequest.of(page, size), search);
     }
 
     @PostMapping
@@ -40,6 +44,13 @@ public class PolicyController {
     @PostMapping("/{id}/sync")
     public ResponseEntity<Policy> syncPolicy(@PathVariable Long id) {
         return ResponseEntity.ok(policyService.syncPolicy(id));
+    }
+
+    @PostMapping("/{id}/push")
+    public ResponseEntity<Void> pushPolicy(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String message = body.getOrDefault("commitMessage", "Update policy from Policy Engine");
+        policyService.pushToGit(id, message);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")

@@ -17,6 +17,11 @@ public class PolicyBundle {
 
     private String description;
 
+    @Column(name = "wasm_enabled")
+    private boolean wasmEnabled = false;
+
+    private String entrypoint = "allow";
+
     @ElementCollection
     @CollectionTable(name = "policy_bundle_bindings", joinColumns = @JoinColumn(name = "bundle_id"))
     @Column(name = "binding_id")
@@ -25,10 +30,13 @@ public class PolicyBundle {
     public PolicyBundle() {
     }
 
-    public PolicyBundle(String name, String description, List<Long> bindingIds) {
+    public PolicyBundle(String name, String description, List<Long> bindingIds, boolean wasmEnabled,
+            String entrypoint) {
         this.name = name;
         this.description = description;
         this.bindingIds = bindingIds;
+        this.wasmEnabled = wasmEnabled;
+        this.entrypoint = entrypoint;
     }
 
     public Long getId() {
@@ -61,5 +69,21 @@ public class PolicyBundle {
 
     public void setBindingIds(List<Long> bindingIds) {
         this.bindingIds = bindingIds;
+    }
+
+    public boolean isWasmEnabled() {
+        return wasmEnabled;
+    }
+
+    public void setWasmEnabled(boolean wasmEnabled) {
+        this.wasmEnabled = wasmEnabled;
+    }
+
+    public String getEntrypoint() {
+        return entrypoint;
+    }
+
+    public void setEntrypoint(String entrypoint) {
+        this.entrypoint = entrypoint;
     }
 }

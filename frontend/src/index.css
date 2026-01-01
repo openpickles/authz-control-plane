@@ -99,6 +99,19 @@
 
   /* Full height layout helpers */
   .page-container {
-    @apply flex flex-col h-full overflow-hidden;
+    @apply flex flex-col h-full overflow-hidden bg-slate-50;
+  }
+
+  /* Accessibility & Layout Utils */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white z-10;
+  }
+
+  .focus-ring-dark {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-slate-900 z-10;
+  }
+
+  .bento-card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md ring-1 ring-slate-200/50;
   }
 }

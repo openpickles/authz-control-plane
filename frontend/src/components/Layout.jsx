@@ -1,100 +1,69 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Shield, Users, Settings, LogOut, Server, Menu, Bell, Search, ChevronRight, Link as LinkIcon, Package } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Bell, Search } from 'lucide-react';
+import DualRailSidebar from './DualRailSidebar';
+import Breadcrumbs from './Breadcrumbs';
 
 const Layout = ({ children }) => {
-    const location = useLocation();
-
-    const isActive = (path) => location.pathname === path;
-
-    const navItems = [
-        { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/policies', icon: Shield, label: 'Policy Editor' },
-        { path: '/entitlements', icon: Users, label: 'Entitlements' },
-        { path: '/policy-bindings', icon: LinkIcon, label: 'Policy Bindings' },
-        { path: '/policy-bundles', icon: Package, label: 'Policy Bundles' },
-        { path: '/providers', icon: Server, label: 'Resource Providers' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-    ];
-
-    const getPageTitle = () => {
-        const item = navItems.find(i => i.path === location.pathname);
-        return item ? item.label : 'Dashboard';
-    };
-
-    const handleLogout = () => {
-        // Redirect to backend logout endpoint to clear session cookie
-        // In dev, we are on localhost:5173, backend is on 8080.
-        // In prod, we are on same origin.
-        const logoutUrl = import.meta.env.DEV ? 'http://localhost:8080/logout' : '/logout';
-        window.location.href = logoutUrl;
-    };
-
     return (
-        <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-            {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20 flex-shrink-0 transition-all duration-300 ease-in-out">
-                <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800">
-                    <Shield className="text-brand-500 mr-3" size={24} />
-                    <span className="font-bold text-white tracking-wide text-sm uppercase">Policy Engine</span>
-                </div>
+        <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+            {/* Accessibility: Skip to Content */}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-20 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-brand-600 focus:shadow-lg focus:rounded-md focus:font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+                Skip to content
+            </a>
 
-                <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-                    <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors duration-200 group ${isActive(item.path)
-                                ? 'bg-brand-600 text-white shadow-md'
-                                : 'hover:bg-slate-800 hover:text-white text-slate-400'
-                                }`}
-                        >
-                            <item.icon size={18} className={isActive(item.path) ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
-                            <span className="font-medium text-sm">{item.label}</span>
-                        </Link>
-                    ))}
-                </nav>
-
-                <div className="p-4 border-t border-slate-800 bg-slate-950">
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full px-4 py-2 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-md transition-colors"
-                    >
-                        <LogOut size={18} />
-                        <span className="font-medium text-sm">Sign Out</span>
-                    </button>
-                </div>
-            </aside>
+            {/* New Dual-Rail Sidebar */}
+            <DualRailSidebar />
 
             {/* Main Content Wrapper */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
+            <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 flex-shrink-0">
-                    <div className="flex items-center gap-4">
-                        <nav className="flex items-center text-sm text-slate-500">
-                            <Link to="/" className="hover:text-brand-600 transition-colors">Home</Link>
-                            <ChevronRight size={14} className="mx-2 text-slate-400" />
-                            <span className="font-medium text-slate-900 text-base">{getPageTitle()}</span>
-                        </nav>
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 z-10 flex-shrink-0 sticky top-0">
+                    <div className="flex items-center gap-4 flex-1">
+                        <Breadcrumbs />
+
+                        {/* Global Search Bar (Command K) */}
+                        <div className="hidden md:flex items-center max-w-md w-full ml-8 relative group">
+                            <Search className="absolute left-3 text-slate-400 group-focus-within:text-brand-500 transition-colors" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search policies, resources... (Cmd+K)"
+                                className="w-full pl-9 pr-4 py-1.5 bg-slate-100 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-md text-sm transition-all outline-none"
+                                aria-label="Global Search"
+                            />
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
-                            <div className="text-right hidden md:block">
-                                <p className="text-sm font-medium text-slate-900">Admin User</p>
-                                <p className="text-xs text-slate-500">Administrator</p>
+                    <div className="flex items-center gap-5">
+                        <button className="text-slate-400 hover:text-slate-600 transition-colors relative focus-ring rounded-full p-1">
+                            <Bell size={20} />
+                            <span className="absolute top-1 right-1 block h-2 w-2 transform translate-x-1/4 -translate-y-1/4 rounded-full bg-red-500 ring-2 ring-white" />
+                        </button>
+
+                        <div className="h-6 w-px bg-slate-200"></div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="text-right hidden md:block leading-tight">
+                                <p className="text-sm font-semibold text-slate-900">Admin User</p>
+                                <p className="text-xs text-slate-500">Global Administrator</p>
                             </div>
-                            <div className="w-8 h-8 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center font-bold border border-brand-200">
+                            <div className="w-9 h-9 bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold border border-brand-200 shadow-sm ring-2 ring-white">
                                 AD
                             </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Page Content - Full Width/Height Fluid Container */}
-                <main className="flex-1 overflow-auto p-6 relative">
-                    <div className="h-full w-full flex flex-col">
+                {/* Page Content - Bento Grid Styled Container */}
+                <main id="main-content" className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 scroll-smooth relative" tabIndex="-1">
+                    {/* 
+                        We wrap children in a constrained max-width container 
+                        to ensure content doesn't stretch too wide on huge screens 
+                     */}
+                    <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col">
                         {children}
                     </div>
                 </main>

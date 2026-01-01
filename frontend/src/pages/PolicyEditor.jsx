@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, Code, FileText, CheckCircle, AlertCircle, Upload, RefreshCw, GitBranch } from 'lucide-react';
-import Editor from '@monaco-editor/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Save, Trash2, Code, FileText, CheckCircle, AlertCircle, Upload, RefreshCw, GitBranch, Play, UploadCloud, Search, Settings, Shield, Sun, Moon } from 'lucide-react';
+import Editor, { useMonaco } from '@monaco-editor/react';
 
-import { policyService } from '../services/api';
+import { policyService, evaluationService } from '../services/api';
+import TestPanel from '../components/TestPanel';
+import { regoLanguageConfig, regoTokenConf, regoLanguageDef, regoSnippets } from '../config/monaco-rego';
+import HelpButton from '../components/common/HelpButton';
 
 const PolicyEditor = () => {
     const [policies, setPolicies] = useState([]);
     const [selectedPolicy, setSelectedPolicy] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [showTestPanel, setShowTestPanel] = useState(false);
+    const [pushModalOpen, setPushModalOpen] = useState(false);
+    const [commitMessage, setCommitMessage] = useState('');
+    const [validationStatus, setValidationStatus] = useState(null); // 'valid', 'invalid', null
+    const [showSettings, setShowSettings] = useState(false);
+    const [theme, setTheme] = useState('vs-dark');
+
+    const editorRef = useRef(null);
+    const monaco = useMonaco();
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -23,21 +36,22 @@ const PolicyEditor = () => {
         syncStatus: null
     });
 
+    const [search, setSearch] = useState('');
 
     const loadPolicies = React.useCallback(async () => {
         try {
-            const response = await policyService.getAll();
-            setPolicies(response.data);
+            const response = await policyService.getAll({ size: 100, search });
+            const data = response.data.content || (Array.isArray(response.data) ? response.data : []);
+            setPolicies(data);
         } catch (error) {
             console.error('Error loading policies:', error);
         }
-    }, []);
+    }, [search]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadPolicies();
+        const timer = setTimeout(() => loadPolicies(), 300); // Debounce search
+        return () => clearTimeout(timer);
     }, [loadPolicies]);
-
 
     const handleSelectPolicy = (policy) => {
         setSelectedPolicy(policy);
@@ -54,9 +68,13 @@ const PolicyEditor = () => {
             gitPath: policy.gitPath,
             lastSyncTime: policy.lastSyncTime,
             syncStatus: policy.syncStatus
-
         });
         setIsEditing(true);
+        // Clear markers when switching policies
+        if (monaco && editorRef.current) {
+            const model = editorRef.current.getModel();
+            if (model) monaco.editor.setModelMarkers(model, 'rego', []);
+        }
     };
 
     const handleCreateNew = () => {
@@ -75,21 +93,35 @@ const PolicyEditor = () => {
             lastSyncTime: null,
             syncStatus: null
         });
-
         setIsEditing(true);
+        if (monaco && editorRef.current) {
+            const model = editorRef.current.getModel();
+            if (model) monaco.editor.setModelMarkers(model, 'rego', []);
+        }
     };
 
     const handleSave = async () => {
+        if (!formData.name.trim()) {
+            alert("Policy Name is required.");
+            return;
+        }
+
+        // Auto-generate filename if missing
+        let validFormData = { ...formData };
+        if (!validFormData.filename || !validFormData.filename.trim()) {
+            const sanitized = validFormData.name.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase();
+            validFormData.filename = `${sanitized || 'policy'}.rego`;
+            setFormData(prev => ({ ...prev, filename: validFormData.filename }));
+        }
+
         try {
             if (selectedPolicy) {
-                await policyService.update(selectedPolicy.id, formData);
+                await policyService.update(selectedPolicy.id, validFormData);
             } else {
-                await policyService.create(formData);
+                await policyService.create(validFormData);
             }
             await loadPolicies();
-            // setIsEditing(false); // Keep editing after save
             if (!selectedPolicy) {
-                // If it was new, we might want to select it, but for now just reload
                 setIsEditing(false);
             }
         } catch (error) {
@@ -121,12 +153,7 @@ const PolicyEditor = () => {
             reader.onload = (e) => {
                 const rawFilename = file.name;
                 const nameWithoutExt = rawFilename.replace(/\.rego$/, '');
-
-                // Append timestamp to ensure filename uniqueness
-                // Format: filename_TIMESTAMP.rego to avoid collision
                 const timestamp = new Date().getTime();
-                const uniqueFilename = rawFilename.replace(/(\.rego)?$/, `_${timestamp}$1`); // $1 restores extension if present or adds nothing if not matched correctly (but regex expects .rego)
-                // Actually safer:
                 const extIndex = rawFilename.lastIndexOf('.');
                 const baseName = extIndex !== -1 ? rawFilename.substring(0, extIndex) : rawFilename;
                 const extension = extIndex !== -1 ? rawFilename.substring(extIndex) : '';
@@ -136,7 +163,6 @@ const PolicyEditor = () => {
                     ...prev,
                     content: e.target.result,
                     filename: uniqueName,
-                    // Auto-fill name if empty
                     name: prev.name ? prev.name : nameWithoutExt
                 }));
             };
@@ -151,11 +177,11 @@ const PolicyEditor = () => {
             const updatedPolicy = response.data;
             setFormData(prev => ({
                 ...prev,
-                content: updatedPolicy.content, // Update content from git
+                content: updatedPolicy.content,
                 lastSyncTime: updatedPolicy.lastSyncTime,
                 syncStatus: updatedPolicy.syncStatus
             }));
-            await loadPolicies(); // Refresh list to update any status indicators there
+            await loadPolicies();
             alert("Policy synced successfully from Git!");
         } catch (error) {
             console.error('Error syncing policy:', error);
@@ -163,249 +189,539 @@ const PolicyEditor = () => {
         }
     };
 
+    const handleValidate = async () => {
+        setValidationStatus('loading');
+        // Clear existing markers
+        if (monaco && editorRef.current) {
+            const model = editorRef.current.getModel();
+            if (model) monaco.editor.setModelMarkers(model, 'rego', []);
+        }
+
+        try {
+            await evaluationService.validate(formData.content);
+            setValidationStatus('valid');
+            setTimeout(() => setValidationStatus(null), 3000);
+            return true;
+        } catch (error) {
+            console.error('Validation error:', error);
+            setValidationStatus('invalid');
+
+            // Try to extract line number and message from error response
+            // Assuming error.response.data.error format: "rego_parse_error: package expected at line 1, column 1"
+            const errorMessage = error.response?.data?.error || error.message;
+
+            // Basic regex to find line number if available
+            // This depends heavily on OPA's error format. 
+            // Example: "rego_parse_error: var cannot be used for rule name at line 3, column 1"
+            const lineMatch = errorMessage.match(/line (\d+)/);
+
+            if (lineMatch && monaco && editorRef.current) {
+                const lineNumber = parseInt(lineMatch[1], 10);
+                const model = editorRef.current.getModel();
+                if (model) {
+                    monaco.editor.setModelMarkers(model, 'rego', [{
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: 1000,
+                        message: errorMessage,
+                        severity: monaco.MarkerSeverity.Error
+                    }]);
+                }
+            } else {
+                alert("Validation Failed: " + errorMessage);
+            }
+            return false;
+        }
+    };
+
+    const handlePush = async () => {
+        if (!selectedPolicy?.id) return;
+
+        // Optional: Auto-validate before push
+        const isValid = await handleValidate();
+        if (!isValid && !window.confirm("Validation failed. Do you want to push anyway?")) {
+            return;
+        }
+
+        setPushModalOpen(true);
+    };
+
+    const confirmPush = async () => {
+        if (!commitMessage.trim()) {
+            alert("Please enter a commit message");
+            return;
+        }
+
+        try {
+            await policyService.push(selectedPolicy.id, commitMessage);
+            setPushModalOpen(false);
+            setCommitMessage('');
+            alert("Successfully pushed to Git!");
+            await loadPolicies();
+        } catch (error) {
+            console.error('Push error:', error);
+            alert("Failed to push to Git: " + (error.response?.data?.error || error.message));
+        }
+    }
+
+    const handleEditorDidMount = (editor, monaco) => {
+        editorRef.current = editor;
+
+        // Register Rego Language
+        monaco.languages.register(regoLanguageConfig);
+        monaco.languages.setMonarchTokensProvider('rego', regoLanguageDef);
+        monaco.languages.setLanguageConfiguration('rego', regoTokenConf);
+
+        // Register Completion Provider
+        monaco.languages.registerCompletionItemProvider('rego', {
+            provideCompletionItems: (model, position) => {
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn,
+                };
+
+                return {
+                    suggestions: regoSnippets.map(s => ({
+                        ...s,
+                        kind: monaco.languages.CompletionItemKind[s.kind],
+                        range: range
+                    }))
+                };
+            }
+        });
+
+        // Add Keybinding for Save (Ctrl+S / Cmd+S)
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            handleSave();
+        });
+    };
+
+    const handleThemeToggle = () => {
+        setTheme(prev => prev === 'vs-dark' ? 'light' : 'vs-dark');
+    };
+
     return (
-        <div className="flex h-full gap-6">
-            {/* Policy List Sidebar */}
-            <div className="w-80 card flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                        <FileText size={18} className="text-brand-600" />
-                        Policies
-                    </h3>
-                    <button
-                        onClick={handleCreateNew}
-                        className="p-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors shadow-sm"
-                        title="New Policy"
-                    >
-                        <Plus size={18} />
-                    </button>
+        <div className="flex h-full gap-4">
+            {/* 1. File Explorer / Policy List */}
+            <div className="w-72 bento-card flex flex-col overflow-hidden flex-shrink-0">
+                <div className="p-4 border-b border-slate-200 bg-slate-50/50 space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
+                            <FileText size={16} className="text-brand-600" />
+                            Explorer
+                        </h3>
+                        <button
+                            onClick={handleCreateNew}
+                            className="p-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors shadow-sm focus-ring"
+                            title="New Policy"
+                            aria-label="Create New Policy"
+                        >
+                            <Plus size={16} />
+                        </button>
+                    </div>
+                    <div className="relative group">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <Search size={14} className="text-slate-400 group-focus-within:text-brand-500" />
+                        </div>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Filter policies..."
+                            className="block w-full rounded-md border-0 py-1.5 pl-9 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-xs sm:leading-6 transition-shadow"
+                        />
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-white">
                     {policies.map((policy) => (
                         <div
                             key={policy.id}
                             onClick={() => handleSelectPolicy(policy)}
-                            className={`p-3 rounded-md cursor-pointer transition-all border ${selectedPolicy?.id === policy.id
-                                ? 'bg-brand-50 border-brand-200 shadow-sm'
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectPolicy(policy); }}
+                            tabIndex={0}
+                            role="button"
+                            className={`p-3 rounded-lg cursor-pointer transition-all border outline-none focus-ring ${selectedPolicy?.id === policy.id
+                                ? 'bg-brand-50 border-brand-200 shadow-sm ring-1 ring-brand-200'
                                 : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
                                 }`}
                         >
                             <div className="flex justify-between items-start">
-                                <div>
-                                    <h4 className={`font-medium text-sm ${selectedPolicy?.id === policy.id ? 'text-brand-900' : 'text-slate-700'}`}>
+                                <div className="min-w-0">
+                                    <h4 className={`font-medium text-sm truncate ${selectedPolicy?.id === policy.id ? 'text-brand-900' : 'text-slate-700'}`}>
                                         {policy.name}
                                     </h4>
-                                    <p className="text-xs text-slate-500 mt-0.5">v{policy.version}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5 truncate">{policy.filename || 'No filename'}</p>
                                 </div>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${policy.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                    policy.status === 'ARCHIVED' ? 'bg-slate-100 text-slate-600' :
-                                        'bg-amber-100 text-amber-700'
-                                    }`}>
-                                    {policy.status}
+                                <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${policy.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                                    policy.status === 'ARCHIVED' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
+                                    {policy.status && policy.status[0]}
                                 </span>
                             </div>
                         </div>
                     ))}
+                    {policies.length === 0 && (
+                        <div className="text-center p-4 text-xs text-slate-400">
+                            No policies found.
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Editor Area */}
-            <div className="flex-1 card flex flex-col overflow-hidden">
+            {/* 2. Main Editor Area (IDE) */}
+            <div className="flex-1 bento-card flex flex-col overflow-hidden relative">
                 {isEditing ? (
                     <>
-                        <div className="p-4 border-b border-slate-200 flex flex-col gap-4 bg-white">
-                            <div className="flex justify-between items-center">
-                                <div className="flex gap-4 items-center">
-                                    <div className="flex flex-col gap-2">
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="Policy Name (ID)"
-                                            className="text-lg font-bold text-slate-900 border-none focus:ring-0 p-0 placeholder-slate-400 w-64"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={formData.filename}
-                                            onChange={(e) => setFormData({ ...formData, filename: e.target.value })}
-                                            placeholder="filename.rego (unique)"
-                                            className="text-xs text-slate-600 border-none focus:ring-0 p-0 placeholder-slate-400 w-64"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Short description..."
-                                            className="text-xs text-slate-500 border-none focus:ring-0 p-0 placeholder-slate-400 w-96 italic"
-                                        />
-                                    </div>
-                                    <div className="h-6 w-px bg-slate-200"></div>
-                                    <select
-                                        value={formData.status}
-                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                        className="text-sm border-slate-300 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 py-1"
-                                    >
-                                        <option value="DRAFT">Draft</option>
-                                        <option value="ACTIVE">Active</option>
-                                        <option value="ARCHIVED">Archived</option>
-                                    </select>
-                                </div>
-                                <div className="flex gap-2">
-                                    {selectedPolicy && (
-                                        <button
-                                            onClick={() => handleDelete(selectedPolicy.id)}
-                                            className="btn-danger flex items-center gap-2 py-1.5 text-sm"
+                        {/* IDE Command Ribbon */}
+                        <div className="h-14 border-b border-slate-200 bg-white flex items-center px-4 gap-4 flex-shrink-0">
+
+                            {/* Left Group: Context (Name & Status) */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0 border-r border-slate-200 pr-4">
+                                <FileText size={18} className="text-slate-400 flex-shrink-0" />
+                                <div className="flex flex-col min-w-0 flex-1">
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        placeholder="Policy Name"
+                                        className="text-sm font-bold text-slate-900 border-none focus:ring-0 p-0 placeholder-slate-400 bg-transparent truncate w-full"
+                                        aria-label="Policy Name"
+                                    />
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                            className="text-[10px] py-0 pl-0 pr-6 border-0 bg-transparent text-slate-500 font-medium focus:ring-0 cursor-pointer uppercase tracking-tight"
+                                            aria-label="Policy Status"
                                         >
-                                            <Trash2 size={16} />
-                                            Delete
+                                            <option value="DRAFT">Draft</option>
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="ARCHIVED">Archived</option>
+                                        </select>
+                                        <span className="text-[10px] text-slate-300">|</span>
+                                        <button
+                                            onClick={() => setShowSettings(true)}
+                                            className="text-[10px] text-slate-400 hover:text-brand-600 flex items-center gap-1 transition-colors"
+                                        >
+                                            <Settings size={10} /> Config
                                         </button>
-                                    )}
-                                    <button
-                                        onClick={handleSave}
-                                        className="btn-primary flex items-center gap-2 py-1.5 text-sm"
-                                    >
-                                        <Save size={16} />
-                                        Save Changes
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Source Configuration */}
-                            <div className="flex items-center gap-4 text-sm">
-                                <label className="font-medium text-slate-700">Source:</label>
-                                <div className="flex rounded-md shadow-sm">
-                                    <button
-                                        onClick={() => setFormData({ ...formData, sourceType: 'MANUAL' })}
-                                        className={`px-3 py-1.5 text-xs font-medium border rounded-l-md ${formData.sourceType === 'MANUAL'
-                                            ? 'bg-brand-50 text-brand-700 border-brand-200 z-10'
-                                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        Manual / Upload
-                                    </button>
-                                    <button
-                                        onClick={() => setFormData({ ...formData, sourceType: 'GIT' })}
-                                        className={`px-3 py-1.5 text-xs font-medium border -ml-px rounded-r-md ${formData.sourceType === 'GIT'
-                                            ? 'bg-brand-50 text-brand-700 border-brand-200 z-10'
-                                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        Git Repository
-                                    </button>
-                                </div>
-
-                                {formData.sourceType === 'MANUAL' && (
-                                    <div className="flex items-center gap-2 ml-4">
+                            {/* Center Group: Source Control (Upload / Git) */}
+                            <div className="flex items-center gap-2 px-2 border-r border-slate-200 pr-4">
+                                {formData.sourceType === 'MANUAL' ? (
+                                    <>
                                         <input
                                             type="file"
                                             accept=".rego"
                                             onChange={handleFileUpload}
                                             className="hidden"
-                                            id="rego-upload"
+                                            id="quick-upload"
                                         />
                                         <label
-                                            htmlFor="rego-upload"
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
+                                            htmlFor="quick-upload"
+                                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 rounded-md cursor-pointer transition-colors border border-slate-200"
+                                            title="Upload .rego file"
                                         >
-                                            <Upload size={14} />
-                                            Upload .rego
+                                            <UploadCloud size={14} />
+                                            <span className="hidden xl:inline">Upload File</span>
                                         </label>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex flex-col items-end">
+                                            <span className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 px-1.5 rounded-full font-mono">
+                                                <GitBranch size={10} /> {formData.gitBranch || 'main'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={handleSyncGit}
+                                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 rounded-md transition-colors border border-slate-200"
+                                            title="Sync from Git"
+                                        >
+                                            <RefreshCw size={14} />
+                                            <span className="hidden xl:inline">Pull</span>
+                                        </button>
+                                        <button
+                                            onClick={handlePush}
+                                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors shadow-sm"
+                                            title="Push to Git"
+                                        >
+                                            <UploadCloud size={14} />
+                                            <span className="hidden xl:inline">Push</span>
+                                        </button>
                                     </div>
                                 )}
                             </div>
 
-                            {formData.sourceType === 'GIT' && (
-                                <div className="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-md border border-slate-200">
-                                    <div className="col-span-1">
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">Repository URL</label>
-                                        <input
-                                            type="text"
-                                            value={formData.gitRepositoryUrl || ''}
-                                            onChange={(e) => setFormData({ ...formData, gitRepositoryUrl: e.target.value })}
-                                            placeholder="https://github.com/org/repo.git"
-                                            className="w-full text-xs border-slate-300 rounded-md"
+                            {/* Right Group: Actions (Test, Validate, Save) */}
+                            <div className="flex items-center gap-2">
+                                <HelpButton topic="policy_editor" />
+
+                                <button
+                                    onClick={handleThemeToggle}
+                                    className="p-2 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-md transition-colors"
+                                    title={`Switch to ${theme === 'vs-dark' ? 'Light' : 'Dark'} Theme`}
+                                >
+                                    {theme === 'vs-dark' ? <Sun size={16} /> : <Moon size={16} />}
+                                </button>
+
+                                <button
+                                    onClick={() => setShowTestPanel(!showTestPanel)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${showTestPanel ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-50 border border-transparent'
+                                        }`}
+                                    title="Toggle Test Panel"
+                                >
+                                    <Play size={14} />
+                                    <span className="hidden lg:inline">{showTestPanel ? 'Hide Tests' : 'Run Tests'}</span>
+                                </button>
+
+                                <button
+                                    onClick={handleValidate}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${validationStatus === 'valid' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        validationStatus === 'invalid' ? 'bg-red-50 text-red-700 border-red-200' :
+                                            'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    {validationStatus === 'valid' ? <CheckCircle size={14} /> :
+                                        validationStatus === 'invalid' ? <AlertCircle size={14} /> :
+                                            <CheckCircle size={14} className="text-slate-400" />
+                                    }
+                                    <span className="hidden lg:inline">{validationStatus === 'valid' ? 'Valid' : 'Check'}</span>
+                                </button>
+
+                                <button
+                                    onClick={handleSave}
+                                    className="btn-primary flex items-center gap-2 py-1.5 px-3 text-xs shadow-sm focus-ring ml-2"
+                                    title="Save Policy (Ctrl+S)"
+                                >
+                                    <Save size={14} />
+                                    <span>Save</span>
+                                </button>
+
+                                {/* Delete Action (Icon only) */}
+                                {selectedPolicy && (
+                                    <button
+                                        onClick={() => handleDelete(selectedPolicy.id)}
+                                        className="ml-1 text-slate-400 hover:text-red-500 p-2 rounded-md hover:bg-red-50 transition-colors"
+                                        title="Delete Policy"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Split Pane: Editor | Test Panel */}
+                        <div className="flex-1 flex overflow-hidden">
+                            <div className={`flex-1 relative ${theme === 'vs-dark' ? 'bg-[#1e1e1e]' : 'bg-white'} transition-all duration-300 flex flex-col`}>
+                                {/* Editor Header/Tabs */}
+                                <div className={`h-8 ${theme === 'vs-dark' ? 'bg-[#252526] border-[#3e3e42]' : 'bg-slate-100 border-slate-200'} flex items-center px-4 border-b`}>
+                                    <span className={`text-[11px] ${theme === 'vs-dark' ? 'text-[#ccccc7] bg-[#1e1e1e] border-[#3e3e42]' : 'text-slate-700 bg-white border-slate-200'} flex items-center gap-2 h-full px-3 border-r border-t-2 border-t-brand-500`}>
+                                        <Code size={12} className="text-blue-400" />
+                                        {formData.filename || 'code.rego'}
+                                    </span>
+                                    {formData.sourceType === 'GIT' && (
+                                        <div className="flex items-center gap-2 px-3 bg-amber-50 h-full border-r border-amber-100 text-[10px] text-amber-700 font-medium">
+                                            <Shield size={10} /> Read Only (Git)
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 relative">
+                                    <Editor
+                                        height="100%"
+                                        defaultLanguage="rego"
+                                        language="rego"
+                                        theme={theme}
+                                        value={formData.content}
+                                        onChange={(value) => setFormData({ ...formData, content: value })}
+                                        onMount={handleEditorDidMount}
+                                        options={{
+                                            minimap: { enabled: false },
+                                            fontSize: 13,
+                                            fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                                            scrollBeyondLastLine: false,
+                                            readOnly: formData.sourceType === 'GIT',
+                                            automaticLayout: true,
+                                            renderLineHighlight: 'all',
+                                            lineHeight: 1.5,
+                                            quickSuggestions: false,
+                                            suggestOnTriggerCharacters: false,
+                                            accessibilitySupport: 'on',
+                                            tabCompletion: 'on'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Test Panel - Right Pane */}
+                            {showTestPanel && (
+                                <div className="w-1/3 min-w-[320px] border-l border-slate-200 bg-white flex flex-col shadow-xl z-10 transition-transform">
+                                    <div className="h-full overflow-hidden">
+                                        <TestPanel
+                                            policyContent={formData.content}
+                                            policyId={selectedPolicy?.id}
+                                            onClose={() => setShowTestPanel(false)}
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">Branch</label>
-                                        <input
-                                            type="text"
-                                            value={formData.gitBranch || ''}
-                                            onChange={(e) => setFormData({ ...formData, gitBranch: e.target.value })}
-                                            placeholder="main"
-                                            className="w-full text-xs border-slate-300 rounded-md"
-                                        />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                        <div className="flex-1">
-                                            <label className="block text-xs font-medium text-slate-500 mb-1">Path to File</label>
-                                            <input
-                                                type="text"
-                                                value={formData.gitPath || ''}
-                                                onChange={(e) => setFormData({ ...formData, gitPath: e.target.value })}
-                                                placeholder="policies/auth.rego"
-                                                className="w-full text-xs border-slate-300 rounded-md"
-                                            />
-                                        </div>
-                                        {selectedPolicy && (
-                                            <div className="flex flex-col items-end gap-1">
-                                                <button
-                                                    onClick={handleSyncGit}
-                                                    className="px-3 py-2 bg-slate-800 text-white rounded-md text-xs font-medium hover:bg-slate-700 flex items-center gap-1"
-                                                >
-                                                    <RefreshCw size={14} />
-                                                    Sync Now
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="col-span-3 flex justify-between items-center text-xs text-slate-500 border-t border-slate-200 pt-2 mt-1">
-                                        <div className="flex gap-2">
-                                            <span>Last Sync: </span>
-                                            <span className="font-mono text-slate-700">
-                                                {formData.lastSyncTime ? new Date(formData.lastSyncTime).toLocaleString() : 'Never'}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2 items-center">
-                                            <span>Status: </span>
-                                            <span className={`font-medium ${(formData.syncStatus || '').startsWith('FAILED') ? 'text-red-600' :
-                                                formData.syncStatus === 'SUCCESS' ? 'text-green-600' : 'text-slate-600'
-                                                }`}>
-                                                {formData.syncStatus || 'Unknown'}
-                                            </span>
-                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
-
-                        <div className="flex-1 relative bg-[#1e1e1e]">
-                            <Editor
-                                height="100%"
-                                defaultLanguage="rego"
-                                language="rego" // You might need to register the language if not standard, or use 'python'/'ruby' for similar colouring
-                                theme="vs-dark"
-                                value={formData.content}
-                                onChange={(value) => setFormData({ ...formData, content: value })}
-                                options={{
-                                    minimap: { enabled: false },
-                                    fontSize: 14,
-                                    scrollBeyondLastLine: false,
-                                    readOnly: formData.sourceType === 'GIT',
-                                    automaticLayout: true,
-                                }}
-                            />
-                        </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                            <Code size={32} className="text-slate-300" />
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
+                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+                            <Shield size={40} className="text-slate-300" strokeWidth={1.5} />
                         </div>
-                        <p className="text-lg font-medium text-slate-600">No Policy Selected</p>
-                        <p className="text-sm mt-2">Select a policy from the sidebar to edit or create a new one.</p>
+                        <h2 className="text-xl font-semibold text-slate-700">Policy Editor</h2>
+                        <p className="text-sm mt-2 text-slate-500 max-w-sm text-center">Select a policy from the explorer to view the code, or create a new one to get started.</p>
+                        <button onClick={handleCreateNew} className="mt-8 btn-primary">
+                            Create New Policy
+                        </button>
                     </div>
                 )}
+            </div>
+
+            {/* Push Modal */}
+            <PushModal
+                isOpen={pushModalOpen}
+                onClose={() => setPushModalOpen(false)}
+                onPush={confirmPush}
+                message={commitMessage}
+                setMessage={setCommitMessage}
+            />
+
+            {/* Policy Settings Modal */}
+            {isEditing && (
+                <PolicySettingsModal
+                    isOpen={showSettings}
+                    onClose={() => setShowSettings(false)}
+                    formData={formData}
+                    setFormData={setFormData}
+                    handleFileUpload={handleFileUpload}
+                    handleSyncGit={handleSyncGit}
+                    selectedPolicy={selectedPolicy}
+                />
+            )}
+        </div>
+    );
+};
+
+const PolicySettingsModal = ({ isOpen, onClose, formData, setFormData, handleFileUpload, handleSyncGit, selectedPolicy }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg w-[32rem] shadow-xl overflow-hidden bento-card p-0">
+                <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                        <Settings size={18} /> Policy Settings
+                    </h3>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-md transition-colors">
+                        <AlertCircle size={18} className="rotate-45 text-slate-500" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {/* Metadata */}
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <div className="flex justify-between">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Filename (.rego)</label>
+                                    <span className="text-[10px] text-slate-400">Must be unique</span>
+                                </div>
+                                <input type="text" value={formData.filename} onChange={(e) => setFormData({ ...formData, filename: e.target.value })} className="input-field font-mono text-xs" placeholder="policy.rego" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="input-field text-xs" rows={2} />
+                        </div>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    {/* Source Config */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Source Configuration</label>
+                        <div className="flex rounded-md shadow-sm mb-4">
+                            <button onClick={() => setFormData({ ...formData, sourceType: 'MANUAL' })} className={`flex-1 py-1.5 text-xs font-medium border rounded-l-md transition-colors ${formData.sourceType === 'MANUAL' ? 'bg-brand-50 text-brand-700 border-brand-200 z-10' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>Manual / Upload</button>
+                            <button onClick={() => setFormData({ ...formData, sourceType: 'GIT' })} className={`flex-1 py-1.5 text-xs font-medium border -ml-px rounded-r-md transition-colors ${formData.sourceType === 'GIT' ? 'bg-brand-50 text-brand-700 border-brand-200 z-10' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>Git Repository</button>
+                        </div>
+
+                        {formData.sourceType === 'MANUAL' && (
+                            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-md border border-slate-200 border-dashed">
+                                <div className="p-2 bg-white rounded-md border border-slate-200 text-slate-400">
+                                    <FileText size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-slate-500">Upload an existing .rego file to replace content.</p>
+                                </div>
+                                <input type="file" accept=".rego" onChange={handleFileUpload} className="hidden" id="rego-upload-modal" />
+                                <label htmlFor="rego-upload-modal" className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
+                                    <Upload size={14} className="mr-1 inline" /> Upload
+                                </label>
+                            </div>
+                        )}
+
+                        {formData.sourceType === 'GIT' && (
+                            <div className="space-y-3 p-3 bg-slate-50 rounded-md border border-slate-200">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Repo URL</label>
+                                    <input type="text" value={formData.gitRepositoryUrl || ''} onChange={(e) => setFormData({ ...formData, gitRepositoryUrl: e.target.value })} className="input-field text-xs" placeholder="https://github.com/..." />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Branch</label>
+                                        <input type="text" value={formData.gitBranch || ''} onChange={(e) => setFormData({ ...formData, gitBranch: e.target.value })} className="input-field text-xs" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Path</label>
+                                        <input type="text" value={formData.gitPath || ''} onChange={(e) => setFormData({ ...formData, gitPath: e.target.value })} className="input-field text-xs" placeholder="policies/auth.rego" />
+                                    </div>
+                                </div>
+                                {selectedPolicy && (
+                                    <div className="flex justify-between items-center pt-2">
+                                        <span className="text-xs text-slate-500">Last Sync: {formData.lastSyncTime ? new Date(formData.lastSyncTime).toLocaleString() : 'Never'}</span>
+                                        <button onClick={handleSyncGit} className="btn-secondary text-xs py-1 px-3 flex items-center gap-1">
+                                            <RefreshCw size={12} /> Sync Now
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+                    <button onClick={onClose} className="btn-primary">Done</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PushModal = ({ isOpen, onClose, onPush, message, setMessage }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+                <h3 className="text-lg font-bold mb-4">Push to Git</h3>
+                <textarea
+                    className="w-full border rounded p-2 mb-4 text-sm"
+                    rows={3}
+                    placeholder="Commit message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                    <button onClick={onClose} className="btn-secondary">Cancel</button>
+                    <button onClick={onPush} className="btn-primary">Push</button>
+                </div>
             </div>
         </div>
     );

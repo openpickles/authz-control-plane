@@ -1,21 +1,22 @@
 # Project Status
 
-## Implemented Features
+## Implemented
+- [x] **Resource Type Management**: Replaced Resource Providers with Resource Types. Supports manual schema definition and external metadata fetching.
+- [x] **Dynamic Entitlements UI**: Entitlement forms dynamically render filters based on the selected Resource Type's schema.
+- [x] **Policy Management**: Upload Rego files, view list (DataGrid).
+- [x] **Git Integration**: Basic structure for syncing policies (Pull/Push).
+- [x] **Pagination & Search**: Implemented across all listing pages (Resource Types, Policies, Entitlements).
 
-### 1. Resource Providers
-- **List Providers**: View all registered microservices/providers.
-- **Register Provider**: Add new providers with Service Name, Base URL, Resource Type, and Fetch Endpoint.
-- **Delete Provider**: Remove existing providers.
-- **Fetch Resources**:
-    - Backend can fetch resources from registered providers.
-    - Frontend can fetch and display resources in the "Add Entitlement" modal.
-    - Mock endpoint (`/api/v1/providers/mock/loans`) exists for testing.
+## Current Focus
+- **Verification**: Ensuring all legacy references to ResourceProvider are removed.
+- **Testing**: End-to-end testing of the "Fetch Schema" workflow and entitlement creation.
 
 ### 2. Entitlements
-- **List Entitlements**: View all access control rules in a table format.
+- **List Entitlements**: View all access control rules in a **DataGrid** with server-side pagination and search.
 - **Create Entitlement**:
     - Support for Subject Type (User, Role, Group).
     - Support for Resource Type selection (from Providers or Custom).
+    - **Dynamic Filtering**: Fetches schemas from Resource Providers to render domain-specific filters.
     - **Multi-Value Support**:
         - Select multiple Actions (Read, Write, etc.).
         - Select multiple Resource IDs (via MultiSelect or comma-separated input).
@@ -28,15 +29,14 @@
 - **Delete Items**: Remove Users, Roles, and Groups.
 
 ### 4. Policy Management
-- **List Policies**: View all policies with status and version.
+- **Policy Bundles**: Manage and distribute policy compilations (WASM or JSON).
+- **Policy Bindings**: Bind policies to specific resource types and contexts.
 - **Authoring**:
     - **Monaco Editor**: Professional in-browser editor with syntax highlighting.
     - **File Upload**: Direct upload of `.rego` files.
 - **GitOps Integration**:
     - **Git Source**: capabilities to link policies to Git repositories.
     - **Sync**: On-demand synchronization of policies from Git.
-- **Sync API**: Endpoint (`/api/v1/sync/policies`) to expose active policies.
-
 - **Sync API**: Endpoint (`/api/v1/sync/policies`) to expose active policies.
 
 ### 5. Infrastructure & Deployment
@@ -46,23 +46,19 @@
 ## TODO / Known Issues
 
 ### 1. Filtering & Search
-- **Entitlement List Filtering**:
-    - [ ] **UI**: Search input and "Filters" button exist but are non-functional.
-    - [ ] **Logic**: No frontend logic to filter the table.
-    - [ ] **Backend**: `EntitlementController` has `getByResource` but it's not wired to the main list view for general filtering.
 - **Global Search**: No global search functionality implemented.
 
 ### 2. Editing Capabilities
 - **Entitlements**:
     - [ ] **Edit Entitlement**: No UI to edit an existing entitlement (only Delete is available). Backend supports `updateEntitlement`.
 - **Resource Providers**:
-    - [ ] **Edit Provider**: No UI to edit provider details. Backend lacks an update endpoint for Providers.
+    - [ ] **Edit Provider**: No UI to edit provider details.
 - **User Management**:
     - [ ] **Edit User/Role/Group**: No UI to rename or modify users/roles/groups.
 
 ### 3. Policy Management
 - **Frontend**:
-    - [ ] **Policy UI**: No visible frontend page for managing Policies (only Entitlements and Providers are visible in the analyzed files).
+    - [ ] **Policies List View**: No dedicated list page for raw policies (managed via Editor or Bindings).
 
 ### 4. Validation & Error Handling
 - **Resource Fetching**:

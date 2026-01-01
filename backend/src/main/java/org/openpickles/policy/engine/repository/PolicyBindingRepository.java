@@ -14,4 +14,7 @@ public interface PolicyBindingRepository extends JpaRepository<PolicyBinding, Lo
     Optional<PolicyBinding> findByResourceTypeAndContext(String resourceType, String context);
 
     List<PolicyBinding> findByResourceTypeIn(List<String> resourceTypes);
+
+    org.springframework.data.domain.Page<PolicyBinding> findByResourceTypeContainingIgnoreCase(String resourceType,
+            org.springframework.data.domain.Pageable pageable);
 }

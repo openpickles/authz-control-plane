@@ -116,9 +116,15 @@ Periodically import lightweight metadata (ID, Name, Tags) of *all* resources int
 ## Recommendation
 **Adopt Option 2 (Dynamic Filter Schema)**.
 
+### Status: Implemented
+This design has been implemented in the following components:
+*   **Backend**: `ResourceProviderController` proxies `/schema` requests.
+*   **Frontend**: `Entitlements.jsx` uses `DynamicFilter` component to render the schema.
+*   **Resource Providers**: `ResourceProviders.jsx` allows registering the Base URL for schema discovery.
+
 It offers the best balance of **usability** (domain-specific filters) and **scalability** (filtering happens at the source). It avoids the complexity of data synchronization (Option 3) while being more powerful than simple text search (Option 1).
 
-### Proposed UI Changes
+### Implemented UI Changes
 1.  **Resource Provider Config**: No changes needed.
 2.  **Entitlement Creation Modal**:
     *   When a Resource Type is selected, fetch its **Filter Schema**.

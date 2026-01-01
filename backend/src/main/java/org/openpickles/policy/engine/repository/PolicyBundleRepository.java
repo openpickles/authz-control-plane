@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PolicyBundleRepository extends JpaRepository<PolicyBundle, Long> {
+    org.springframework.data.domain.Page<PolicyBundle> findByNameContainingIgnoreCase(String name,
+            org.springframework.data.domain.Pageable pageable);
 }

@@ -2,6 +2,7 @@ package org.openpickles.policy.engine.service;
 
 import org.openpickles.policy.engine.model.Policy;
 import org.openpickles.policy.engine.repository.PolicyRepository;
+import org.openpickles.policy.engine.aop.Auditable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,15 @@ public class PolicyService {
         return policyRepository.findAll();
     }
 
+    public org.springframework.data.domain.Page<Policy> getAllPolicies(
+            org.springframework.data.domain.Pageable pageable, String search) {
+        if (search != null && !search.trim().isEmpty()) {
+            return policyRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        }
+        return policyRepository.findAll(pageable);
+    }
+
+    @Auditable(action = "CREATE", resourceType = "POLICY")
     public Policy createPolicy(Policy policy) {
         validatePolicy(policy);
         return policyRepository.save(policy);
@@ -31,6 +41,7 @@ public class PolicyService {
         return policyRepository.findById(id);
     }
 
+    @Auditable(action = "UPDATE", resourceType = "POLICY")
     public Policy updatePolicy(Long id, Policy policyDetails) {
         Policy policy = policyRepository.findById(id)
                 .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
@@ -63,6 +74,7 @@ public class PolicyService {
         }
     }
 
+    @Auditable(action = "SYNC", resourceType = "POLICY")
     public Policy syncPolicy(Long id) {
         Policy policy = policyRepository.findById(id)
                 .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
@@ -91,6 +103,35 @@ public class PolicyService {
         return policyRepository.save(policy);
     }
 
+    @Auditable(action = "PUSH_TO_GIT", resourceType = "POLICY")
+    public void pushToGit(Long id, String commitMessage) {
+        Policy policy = policyRepository.findById(id)
+                .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
+                        "Policy not found with id: " + id, "FUNC_007"));
+
+        if (policy.getSourceType() != Policy.SourceType.GIT) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Policy is not configured for Git sync", "FUNC_008");
+        }
+
+        try {
+            gitService.pushFileContent(
+                    policy.getGitRepositoryUrl(),
+                    policy.getGitBranch(),
+                    policy.getGitPath(),
+                    policy.getContent(),
+                    commitMessage);
+            policy.setLastSyncTime(LocalDateTime.now());
+            policy.setSyncStatus("SUCCESS (Pushed)");
+            policyRepository.save(policy);
+        } catch (Exception e) {
+            policy.setSyncStatus("PUSH FAILED: " + e.getMessage());
+            policyRepository.save(policy);
+            throw e;
+        }
+    }
+
+    @Auditable(action = "DELETE", resourceType = "POLICY")
     public void deletePolicy(Long id) {
         policyRepository.deleteById(id);
     }

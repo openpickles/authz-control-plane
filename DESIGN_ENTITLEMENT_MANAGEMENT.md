@@ -136,15 +136,17 @@ graph TD
 
 ---
 
-## 4. Proposed UI/UX Changes
+## 4. Implemented UI/UX Changes
 
 1.  **Policy Management**:
-    *   New Page: **Policies**. Professional Editor (**Monaco**) for logic.
-    *   **GitOps Support**: Policies can be sourced from Git repositories with an optional **Sync** workflow.
-    *   **File Upload**: Support for uploading `.rego` files directly.
-2.  **Resource Type Configuration** (New):
-    *   Select "Loan Service".
-    *   Define **Default Policies**: "For `read` action, use `Policy A`".
-3.  **Entitlement Management** (Modified):
+    *   **Policy Bundles**: List and download bundles.
+    *   **Policy Bindings**: Manage associations between Resource Types and Policies.
+    *   **Authoring**: **Monaco Editor** for logic.
+    *   **GitOps Support**: Policies can be sourced from Git repositories.
+2.  **Resource Type Configuration**:
+    *   Managed via **Resource Providers** list.
+3.  **Entitlement Management**:
+    *   Refactored `Entitlements` page with **DataGrid** and **SlideOver**.
+    *   **Dynamic Filtering**: Backend fetches implementation-specific filters from providers.
     *   Select Subject & Resource.
     *   (Optional) "Policy Override": Select a specific policy if needed.

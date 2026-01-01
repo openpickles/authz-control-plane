@@ -12,4 +12,7 @@ public interface PolicyRepository extends JpaRepository<Policy, Long> {
     Optional<Policy> findByName(String name);
 
     List<Policy> findByNameIn(java.util.Collection<String> names);
+
+    org.springframework.data.domain.Page<Policy> findByNameContainingIgnoreCase(String name,
+            org.springframework.data.domain.Pageable pageable);
 }
