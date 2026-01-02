@@ -1,0 +1,6 @@
+{
+    "name": "test-policy",
+    "content": "package test.policy\ndefault allow = false\nallow { input.user == \"admin\" }",
+    "sourceType": "MANUAL",
+    "filename": "test-policy.rego"
+}

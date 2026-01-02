@@ -181,3 +181,76 @@ If your service owns the source of truth for some entitlements (e.g., "User Alic
 *   **Trigger on Change**: Call this API whenever resource ownership/permissions change in your service.
 *   **Periodic Reconciliation**: Optionally run a nightly job to push the full state to ensure consistency.
 
+
+---
+
+## Part 5: Real-time Updates & Client SDK
+
+To get instant policy updates without polling, you can use **WebSockets** (default), **Kafka**, or **RabbitMQ**.
+
+### 5.1 Using the Java Client SDK
+
+The easiest way to integrate is using our provided Java Client Library. It abstracts away the transport layer.
+
+**Maven Dependency**:
+```xml
+<dependency>
+    <groupId>org.openpickles</groupId>
+    <artifactId>policy-engine-client</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+</dependency>
+```
+
+**Initialization (WebSocket)**:
+```java
+ClientConfig config = ClientConfig.builder()
+    .controlPlaneUrl("ws://policy-engine-host:8080/ws")
+    .bundleName("my-service-bundle")
+    .build();
+
+PolicyEngineClient client = new PolicyEngineClient(config);
+client.start();
+```
+
+**Initialization (Kafka)**:
+```java
+ClientConfig config = ClientConfig.builder()
+    .transportType("KAFKA")
+    .kafkaBootstrapServers("localhost:9092")
+    .bundleName("my-service-bundle") // Listens to topic 'policy-updates'
+    .build();
+
+PolicyEngineClient client = new PolicyEngineClient(config);
+client.start();
+```
+
+### 5.2 Raw Integration (Non-Java)
+
+If you are not using Java, you can listen directly to the message broker.
+
+**Event Format (CloudEvents JSON)**:
+All updates are broadcast as **CloudEvents**.
+```json
+{
+  "specversion": "1.0",
+  "type": "org.openpickles.policy.bundle.update",
+  "source": "/policy-engine/control-plane",
+  "id": "event-uuid-1234",
+  "time": "2023-10-27T10:00:00Z",
+  "datacontenttype": "application/json",
+  "data": {
+    "bundleName": "my-service-bundle",
+    "version": "v1.5.0",
+    "downloadUrl": "http://policy-engine-host/api/v1/bundles/download?..."
+  }
+}
+```
+
+**Kafka**:
+- Default Topic: `policy-updates`
+- Key: Event ID
+- Value: CloudEvent JSON
+
+**RabbitMQ**:
+- Default Exchange: `policy.updates` (Fanout)
+- Bind a temporary queue to this exchange.

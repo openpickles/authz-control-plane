@@ -15,6 +15,7 @@
 	<description>Centralized Policy Engine</description>
 	<properties>
 		<java.version>21</java.version>
+		<kafka.version>3.9.1</kafka.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -79,6 +80,30 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
+		<!-- WebSocket / STOMP -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
+		<!-- CloudEvents -->
+		<dependency>
+			<groupId>io.cloudevents</groupId>
+			<artifactId>cloudevents-json-jackson</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+
+
+		<!-- Message Broker Support -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -108,39 +133,38 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>com.github.eirslett</groupId>
-				<artifactId>frontend-maven-plugin</artifactId>
-				<version>1.15.4</version>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.1.1</version>
 				<configuration>
 					<workingDirectory>../frontend</workingDirectory>
-					<installDirectory>target</installDirectory>
 				</configuration>
 				<executions>
 					<execution>
-						<id>install node and npm</id>
+						<id>npm-install</id>
+						<phase>generate-resources</phase>
 						<goals>
-							<goal>install-node-and-npm</goal>
+							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<nodeVersion>v20.10.0</nodeVersion>
+							<executable>npm</executable>
+							<arguments>
+								<argument>install</argument>
+							</arguments>
 						</configuration>
 					</execution>
 					<execution>
-						<id>npm install</id>
+						<id>npm-build</id>
+						<phase>generate-resources</phase>
 						<goals>
-							<goal>npm</goal>
+							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<arguments>install</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<id>npm run build</id>
-						<goals>
-							<goal>npm</goal>
-						</goals>
-						<configuration>
-							<arguments>run build</arguments>
+							<executable>npm</executable>
+							<arguments>
+								<argument>run</argument>
+								<argument>build</argument>
+							</arguments>
 						</configuration>
 					</execution>
 				</executions>

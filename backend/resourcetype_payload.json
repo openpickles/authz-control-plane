@@ -1,0 +1,5 @@
+{
+    "name": "Test Resource",
+    "resourceKey": "test-res",
+    "description": "E2E Test Resource"
+}

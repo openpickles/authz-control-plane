@@ -1,3 +1,11 @@
+policy:
+  engine:
+    transport:
+      type: WEBSOCKET # Options: WEBSOCKET, KAFKA, RABBITMQ
+      rabbitmq:
+        exchange: policy.updates
+      kafka:
+        topic: policy-updates
 spring:
   application:
     name: policy-engine
