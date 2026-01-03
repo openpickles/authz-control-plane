@@ -1,9 +1,0 @@
-{
-    "name": "test-bundle",
-    "description": "E2E Bundle",
-    "entrypoint": "test/policy/allow",
-    "bindingIds": [
-        1
-    ],
-    "wasmEnabled": false
-}

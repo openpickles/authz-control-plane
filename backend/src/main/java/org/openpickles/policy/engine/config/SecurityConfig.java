@@ -66,12 +66,23 @@ public class SecurityConfig {
                 return source;
         }
 
+        @org.springframework.beans.factory.annotation.Value("${app.security.admin.username}")
+        private String adminUsername;
+
+        @org.springframework.beans.factory.annotation.Value("${app.security.admin.password}")
+        private String adminPassword;
+
+        @Bean
+        public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+                return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        }
+
         @Bean
         public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
                 org.springframework.security.core.userdetails.UserDetails user = org.springframework.security.core.userdetails.User
-                                .withDefaultPasswordEncoder()
-                                .username("admin")
-                                .password("admin123")
+                                .builder()
+                                .username(adminUsername)
+                                .password(passwordEncoder().encode(adminPassword))
                                 .roles("ADMIN")
                                 .build();
 

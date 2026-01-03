@@ -1,5 +1,18 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+// Default credentials if env vars are missing
+process.env.TEST_USERNAME = process.env.TEST_USERNAME || 'admin';
+process.env.TEST_PASSWORD = process.env.TEST_PASSWORD || 'admin123';
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -19,7 +32,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:8080',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -33,22 +46,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
+  /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    stdout: 'ignore',
-    stderr: 'pipe',
+    command: 'echo "Server should be running manually"',
+    url: 'http://localhost:8080',
+    reuseExistingServer: true,
+    timeout: 120 * 1000,
   },
 });

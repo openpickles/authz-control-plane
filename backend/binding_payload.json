@@ -1,8 +1,0 @@
-{
-    "resourceType": "test-res",
-    "context": "default",
-    "policyIds": [
-        1
-    ],
-    "evaluationMode": "DIRECT"
-}

@@ -22,8 +22,8 @@ describe('PolicyEditor Component', () => {
 
     test('renders Policy Editor correctly', async () => {
         render(<PolicyEditor />);
-        expect(screen.getByText('Policies')).toBeInTheDocument();
-        expect(screen.getByText('No Policy Selected')).toBeInTheDocument();
+        expect(screen.getByText('Explorer')).toBeInTheDocument();
+        expect(screen.getByText('No policies found.')).toBeInTheDocument();
     });
 
     test('allows creating a new policy', async () => {
@@ -34,13 +34,20 @@ describe('PolicyEditor Component', () => {
         fireEvent.click(newButton);
 
         // Check for form fields
-        expect(screen.getByPlaceholderText('Policy Name (ID)')).toBeInTheDocument();
-        expect(screen.getByPlaceholderText('filename.rego (unique)')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Policy Name')).toBeInTheDocument();
+
+        // Open Settings to see filename
+        const configButton = screen.getByText('Config');
+        fireEvent.click(configButton);
+        expect(screen.getByPlaceholderText('policy.rego')).toBeInTheDocument();
 
         // Fill form
-        fireEvent.change(screen.getByPlaceholderText('Policy Name (ID)'), { target: { value: 'test.policy' } });
-        fireEvent.change(screen.getByPlaceholderText('filename.rego (unique)'), { target: { value: 'test.rego' } });
-        fireEvent.change(screen.getByPlaceholderText('Short description...'), { target: { value: 'Test Description' } });
+        fireEvent.change(screen.getByPlaceholderText('Policy Name'), { target: { value: 'test.policy' } });
+        fireEvent.change(screen.getByPlaceholderText('policy.rego'), { target: { value: 'test.rego' } });
+
+        // Close Settings
+        const doneButton = screen.getByText('Done');
+        fireEvent.click(doneButton);
 
         // Save
         policyService.create.mockResolvedValue({
@@ -50,14 +57,14 @@ describe('PolicyEditor Component', () => {
             data: [{ id: 1, name: 'test.policy', filename: 'test.rego', status: 'DRAFT', version: '1.0' }]
         });
 
-        const saveButton = screen.getByText('Save Changes');
+        const saveButton = screen.getByTitle('Save Policy (Ctrl+S)');
         fireEvent.click(saveButton);
 
         await waitFor(() => {
             expect(policyService.create).toHaveBeenCalledWith(expect.objectContaining({
                 name: 'test.policy',
                 filename: 'test.rego',
-                description: 'Test Description'
+                description: ''
             }));
         });
     });

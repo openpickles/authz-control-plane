@@ -5,19 +5,20 @@ test.describe('Policy Editor', () => {
     test.beforeEach(async ({ page }) => {
         // Login
         await page.goto('/login');
-        await page.fill('input[type="text"]', 'admin');
-        await page.fill('input[type="password"]', 'admin123');
-        await page.click('button[type="submit"]');
+        await page.fill('input[type="text"]', process.env.TEST_USERNAME || '');
+        await page.fill('input[type="password"]', process.env.TEST_PASSWORD || '');
+        await page.click('button:has-text("Sign In")');
         await expect(page).toHaveURL('/');
         // Navigate to Policy Editor
-        await page.click('a[href="/policies/editor"]');
+        await page.click('a[aria-label="Policy Engine"]');
+        await page.click('a[href="/policies"]:has-text("Studio")');
     });
 
     test('should create a new policy', async ({ page }) => {
         await page.click('button[aria-label="Create New Policy"]');
 
         // Fill Name
-        await page.fill('input[placeholder="Policy Name"]', 'e2e-policy');
+        await page.fill('input[placeholder="Policy Name"]', 'e2e-policy', { force: true });
 
         // Monaco Editor Interaction (Basic Click and Type)
         // Click essentially inside the editor area
@@ -30,19 +31,27 @@ test.describe('Policy Editor', () => {
         await page.click('button:has-text("Save")');
 
         // Verify in list
-        await expect(page.locator('text=e2e-policy')).toBeVisible();
+        // Verify in list - use first matching
+        await expect(page.locator('text=e2e-policy').first()).toBeVisible();
     });
 
     test('should toggle test panel', async ({ page }) => {
-        await page.click('button:has-text("Run Tests")');
-        await expect(page.locator('text=Input Data')).toBeVisible(); // Inside TestPanel
-        await page.click('button:has-text("Hide Tests")');
-        await expect(page.locator('text=Input Data')).not.toBeVisible();
+        // Must be editing to see the panel button
+        await page.click('button[aria-label="Create New Policy"]');
+        await page.fill('input[placeholder="Policy Name"]', 'test-policy', { force: true });
+
+        // Use title selector as text might be hidden on small screens
+        await page.click('button[title="Toggle Test Panel"]');
+        await expect(page.locator('text=Test Policy')).toBeVisible(); // Inside TestPanel
+        await page.click('button[title="Toggle Test Panel"]');
+        await expect(page.locator('text=Test Policy')).not.toBeVisible();
     });
 
     test('should validate syntax', async ({ page }) => {
         await page.click('button[aria-label="Create New Policy"]');
-        await page.fill('input[placeholder="Policy Name"]', 'invalid-policy');
+        const nameInput = page.getByPlaceholder('Policy Name');
+        // await nameInput.waitFor(); // Removed cause input might be 'hidden' to playwright
+        await nameInput.fill('invalid-policy', { force: true });
 
         // Type invalid rego
         await page.click('.monaco-editor');

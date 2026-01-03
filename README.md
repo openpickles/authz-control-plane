@@ -53,6 +53,8 @@ We use **Playwright** for full system testing, covering critical user flows.
 cd frontend
 npx playwright test
 ```
+*Note: Tests will run using default credentials (`admin`/`admin123`). To run verify against custom credentials, ensure `TEST_USERNAME` and `TEST_PASSWORD` env vars are set matches the backend.*
+
 *Tip: Use `npx playwright show-report` to view detailed HTML test results including traces and videos of failures.*
 
 ### 4. Client Library Integration Tests
@@ -118,9 +120,36 @@ policy:
 - Node.js 18+
 - Maven (wrapper included)
 
-### Running the Application
+### Quick Start (Development)
+We provide helper scripts for zero-config local development:
 
-You can run the application in two ways:
+1.  **Start Backend** (builds & runs in background):
+    ```bash
+    ./start-dev.sh
+    ```
+    *   Starts on `http://localhost:8080`.
+    *   Logs output to `backend/backend.log`.
+    *   Uses default credentials: `admin` / `admin123`.
+
+2.  **Stop Backend**:
+    ```bash
+    ./stop-dev.sh
+    ```
+
+### Configuration & Security
+
+**Default Credentials (Local Dev):**
+- Username: `admin`
+- Password: `admin123`
+
+**Production Overrides:**
+To secure the application for production or custom environments, set the following environment variables:
+```bash
+export ADMIN_USERNAME=myuser
+export ADMIN_PASSWORD=mypassword
+```
+
+### Running the Application Manually
 
 #### 1. Integrated Build (Recommended for Production)
 This will build both the frontend and backend, bundle them into a single JAR, and run it.
@@ -144,7 +173,7 @@ Run frontend and backend separately for hot-reloading.
 
 **Backend**:
 1.  `cd backend`
-2.  `./mvnw spring-boot:run` (Starts on `http://localhost:8080`)
+2.  `./mvnw spring-boot:run` (Starts on `http://localhost:8080` with default admin credentials)
 
 **Frontend**:
 1.  `cd frontend`
