@@ -27,16 +27,18 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [policiesRes, resourceTypesRes, bundlesRes] = await Promise.all([
+                const [policiesRes, resourceTypesRes, bundlesRes, clientStatsRes] = await Promise.all([
                     policyService.getAll({ size: 1 }),
                     resourceTypeService.getAll({ size: 1 }),
-                    policyBundleService.getAll({ size: 1 })
+                    policyBundleService.getAll({ size: 1 }),
+                    fetch('/api/v1/stats/clients').then(r => r.json())
                 ]);
 
                 setStats({
                     policies: policiesRes.data.totalElements || 0,
                     resourceTypes: resourceTypesRes.data.totalElements || 0,
-                    bundles: bundlesRes.data.totalElements || 0
+                    bundles: bundlesRes.data.totalElements || 0,
+                    activeClients: clientStatsRes.activeConnections || 0
                 });
             } catch (error) {
                 console.error('Error fetching dashboard stats:', error);
@@ -83,15 +85,19 @@ const Dashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-                <div className="card p-12 flex flex-col items-center justify-center text-center space-y-4 bg-slate-50 border-dashed border-2 border-slate-200">
-                    <div className="p-4 bg-white rounded-full shadow-sm">
-                        <Activity size={32} className="text-slate-400" />
+                <div className="card p-12 flex flex-col items-center justify-center text-center space-y-4 bg-white border border-slate-200 shadow-sm">
+                    <div className="p-4 bg-blue-50 rounded-full">
+                        <Activity size={32} className="text-blue-500" />
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-slate-700">Client Connectivity</h3>
-                        <p className="text-slate-500 max-w-md mx-auto mt-2">
-                            Client connectivity metrics and real-time bundle download stats will appear here once clients start connecting to the engine.
+                        <p className="text-slate-500 max-w-md mx-auto mt-2 mb-4">
+                            Real-time connection status of policy enforcement points.
                         </p>
+                        <div className="text-4xl font-bold text-slate-900">
+                            {loading ? '-' : stats.activeClients}
+                        </div>
+                        <p className="text-sm text-slate-400 mt-1">Active WebSocket Sessions</p>
                     </div>
                 </div>
             </div>

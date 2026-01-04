@@ -26,6 +26,8 @@ yarn-error.log*
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 backend/deploy.sh
+backend/backend.log
+*.pid
 
 # Frontend specific
 frontend/node_modules/

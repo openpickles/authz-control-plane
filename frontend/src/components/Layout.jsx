@@ -53,6 +53,9 @@ const Layout = ({ children }) => {
                             <div className="w-9 h-9 bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold border border-brand-200 shadow-sm ring-2 ring-white">
                                 AD
                             </div>
+                            <button onClick={() => window.location.href = '/login'} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2">
+                                Logout
+                            </button>
                         </div>
                     </div>
                 </header>

@@ -12,25 +12,32 @@ import PolicyBindings from './pages/PolicyBindings';
 import PolicyBundles from './pages/PolicyBundles';
 import AuditLog from './pages/AuditLog';
 
+import Login from './pages/Login';
+
 // Placeholder for missing pages
 const Settings = () => <div className="text-2xl font-bold text-white">Settings Page (Coming Soon)</div>;
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/policies" element={<PolicyEditor />} />
-          <Route path="/entitlements" element={<Entitlements />} />
-          <Route path="/resource-types" element={<ResourceTypes />} />
-          <Route path="/users" element={<UserManagement />} />
-          <Route path="/policy-bindings" element={<PolicyBindings />} />
-          <Route path="/policy-bundles" element={<PolicyBundles />} />
-          <Route path="/audit" element={<AuditLog />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/*" element={
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/policies" element={<PolicyEditor />} />
+              <Route path="/entitlements" element={<Entitlements />} />
+              <Route path="/resource-types" element={<ResourceTypes />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/policy-bindings" element={<PolicyBindings />} />
+              <Route path="/policy-bundles" element={<PolicyBundles />} />
+              <Route path="/audit" element={<AuditLog />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Layout>
+        } />
+      </Routes>
     </Router>
   );
 }

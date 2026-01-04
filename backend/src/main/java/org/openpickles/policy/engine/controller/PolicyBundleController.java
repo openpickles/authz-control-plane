@@ -46,6 +46,9 @@ public class PolicyBundleController {
     @Autowired
     private org.openpickles.policy.engine.repository.ResourceTypeRepository resourceTypeRepository;
 
+    @Autowired(required = false)
+    private org.openpickles.policy.engine.event.EventPublisher eventPublisher;
+
     @GetMapping
     public org.springframework.data.domain.Page<PolicyBundle> getAllBundles(
             @RequestParam(defaultValue = "0") int page,
@@ -66,6 +69,46 @@ public class PolicyBundleController {
             validateWasmBundle(bundle);
         }
         return bundleRepository.save(bundle);
+    }
+
+    @PostMapping("/{name}/build")
+    public ResponseEntity<String> buildBundle(@PathVariable String name) {
+        logger.info("Triggering build (and notification) for bundle: {}", name);
+        PolicyBundle bundle = bundleRepository.findByName(name)
+                .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
+                        "Bundle not found with name: " + name, "FUNC_004"));
+
+        if (eventPublisher != null) {
+            try {
+                String version = java.util.UUID.randomUUID().toString();
+                // Assuming the backend URL is localhost:8080 for this demo context
+                // In production, this should be configurable
+                String downloadUrl = "http://localhost:8080/api/v1/bundles/" + bundle.getId() + "/download";
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("bundleName", bundle.getName());
+                data.put("version", version);
+                data.put("downloadUrl", downloadUrl);
+
+                byte[] jsonBytes = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(data);
+
+                io.cloudevents.CloudEvent event = io.cloudevents.core.builder.CloudEventBuilder.v1()
+                        .withId(java.util.UUID.randomUUID().toString())
+                        .withSource(java.net.URI.create("policy-engine"))
+                        .withType("org.openpickles.policy.bundle.update")
+                        .withData("application/json", jsonBytes)
+                        .build();
+
+                eventPublisher.publish("bundles/" + name, event);
+                return ResponseEntity.ok("Build triggered and notification sent. Version: " + version);
+            } catch (Exception e) {
+                logger.error("Failed to publish notification", e);
+                return ResponseEntity.status(500).body("Build triggered but notification failed");
+            }
+        } else {
+            logger.warn("EventPublisher is not available. Skipping notification.");
+            return ResponseEntity.ok("Build triggered (No notification sent - EventPublisher missing)");
+        }
     }
 
     @GetMapping("/download")

@@ -19,6 +19,18 @@ public class PolicyService {
     @Autowired
     private GitService gitService;
 
+    @Autowired
+    private org.openpickles.policy.engine.event.EventPublisher eventPublisher;
+
+    @Autowired
+    private org.openpickles.policy.engine.repository.PolicyBindingRepository policyBindingRepository;
+
+    @Autowired
+    private org.openpickles.policy.engine.repository.PolicyBundleRepository policyBundleRepository;
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     public List<Policy> getAllPolicies() {
         return policyRepository.findAll();
     }
@@ -60,7 +72,51 @@ public class PolicyService {
         policy.setGitPath(policyDetails.getGitPath());
         policy.setFilename(policyDetails.getFilename());
 
-        return policyRepository.save(policy);
+        Policy saved = policyRepository.save(policy);
+        notifyPolicyChange(saved);
+        return saved;
+    }
+
+    private void notifyPolicyChange(Policy policy) {
+        try {
+            // Find all bindings that use this policy
+            List<org.openpickles.policy.engine.model.PolicyBinding> bindings = policyBindingRepository
+                    .findByPolicyIdsContaining(policy.getId());
+
+            for (org.openpickles.policy.engine.model.PolicyBinding binding : bindings) {
+                // Find all bundles that use this binding
+                List<org.openpickles.policy.engine.model.PolicyBundle> bundles = policyBundleRepository
+                        .findByBindingIdsContaining(binding.getId());
+
+                for (org.openpickles.policy.engine.model.PolicyBundle bundle : bundles) {
+                    // Construct Event Data
+                    java.util.Map<String, String> eventData = new java.util.HashMap<>();
+                    eventData.put("bundleName", bundle.getName());
+                    eventData.put("version", java.util.UUID.randomUUID().toString()); // Mock version for now
+                    eventData.put("downloadUrl", "/api/v1/bundles/" + bundle.getName() + "/download"); // TODO: Real URL
+
+                    byte[] dataBytes = objectMapper.writeValueAsBytes(eventData);
+
+                    // Build CloudEvent
+                    io.cloudevents.CloudEvent event = io.cloudevents.core.builder.CloudEventBuilder.v1()
+                            .withId(java.util.UUID.randomUUID().toString())
+                            .withSource(java.net.URI.create("/policy-engine/control-plane"))
+                            .withType("org.openpickles.policy.bundle.update")
+                            .withSubject("bundles/" + bundle.getName())
+                            .withTime(java.time.OffsetDateTime.now())
+                            .withDataContentType("application/json")
+                            .withData(dataBytes)
+                            .build();
+
+                    // Publish
+                    eventPublisher.publish("bundles/" + bundle.getName(), event);
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            System.err.println("Failed to publish policy update event: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void validatePolicy(Policy policy) {
@@ -124,6 +180,8 @@ public class PolicyService {
             policy.setLastSyncTime(LocalDateTime.now());
             policy.setSyncStatus("SUCCESS (Pushed)");
             policyRepository.save(policy);
+            notifyPolicyChange(policy); // Notify after push too? Or only after Sync? Assuming update here implies
+                                        // change.
         } catch (Exception e) {
             policy.setSyncStatus("PUSH FAILED: " + e.getMessage());
             policyRepository.save(policy);

@@ -1,0 +1,6 @@
+server:
+  port: 9090 # Driver runs on 9090 to avoid conflict with backend 8080
+
+logging:
+  level:
+    org.openpickles: DEBUG

@@ -216,8 +216,9 @@ const PolicyBindings = () => {
             >
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
+                        <label htmlFor="resourceType" className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
                         <select
+                            id="resourceType"
                             value={formData.resourceType}
                             onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
                             className="input-field"
