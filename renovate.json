@@ -1,0 +1,29 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:base"
+    ],
+    "packageRules": [
+        {
+            "matchUpdateTypes": [
+                "minor",
+                "patch",
+                "pin",
+                "digest"
+            ],
+            "groupName": "all non-major dependencies",
+            "groupSlug": "all-minor-patch"
+        },
+        {
+            "matchPackagePatterns": [
+                "^org.springframework.boot"
+            ],
+            "groupName": "Spring Boot",
+            "groupSlug": "spring-boot"
+        }
+    ],
+    "schedule": [
+        "before 5am on monday"
+    ],
+    "timezone": "Asia/Kolkata"
+}
