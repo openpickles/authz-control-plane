@@ -1,6 +1,8 @@
 # Centralized Policy Engine
 
-A reference implementation of a centralized authorization system for managing OPA policies and entitlements across microservices. Built with Spring Boot and React.
+A robust, distributed authorization platform designed for microservices. It combines the flexibility of **Distributed Policy-as-Code** (Teams own their policies) with the governance of a **Centralized Control Plane**.
+
+**[📖 Read the Integration Guide](INTEGRATION_GUIDE.md)** for detailed usage instructions.
 
 ![Dashboard](https://via.placeholder.com/800x400?text=Policy+Engine+Dashboard)
 
@@ -10,8 +12,9 @@ A reference implementation of a centralized authorization system for managing OP
 - **Enhanced Authoring**: Professional editor (Monaco) with syntax highlighting and direct **File Upload** support.
 - **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
 - **Entitlement Management**: Define fine-grained access control rules (User/Role/Group) with **Server-Side Pagination** and **Search**.
-- **Distributed Policy Sync**: Idempotent synchronization of policies, bundles, and bindings from upstream services using `policy-manifest.yaml`.
-- **Layered Policy Management**: Override vendor/product policies with custom definitions while maintaining upgradability ("Copy-on-Write").
+- **Distributed Policy-as-Code**: Teams develop policies alongside their service code. The Control Plane automatically bootstraps these definitions via `policy-manifest.yaml`.
+- **Hybrid Management**: Support for both **Code-First** (Bootstrapping) and **UI-First** (Direct Creation) policy workflows.
+- **Layered Customization**: Security teams can overrides Product policies (defined by devs) with Custom policies using a safe "Copy-on-Write" model.
 - **Resource Provider Integration**: Register and manage microservices with **Dynamic Filter Schema** support.
 - **Dynamic Bundle Download**: Download policies tailored to specific resource types (e.g., `?resourceTypes=DOCUMENT`).
 - **Policy Metadata**: Policies now support `description` and `filename` metadata for better organization.
