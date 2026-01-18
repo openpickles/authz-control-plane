@@ -36,7 +36,7 @@ public class SecurityConfig {
                                                                                                                          // and
                                                                                                                          // static
                                                                                                                          // assets
-                                                .requestMatchers("/api/v1/sync/**", "/ws/**").permitAll() // Public sync
+                                                .requestMatchers("/api/v1/dist/**", "/ws/**").permitAll() // Public sync
                                                                                                           // API and
                                                                                                           // WebSocket
                                                 .anyRequest().authenticated())

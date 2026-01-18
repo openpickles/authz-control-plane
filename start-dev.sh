@@ -1,22 +1,49 @@
 #!/bin/bash
 
-# Navigate to backend directory
-cd backend || exit
+# Root directory
+ROOT_DIR=$(pwd)
 
-# Set default development credentials
-# Defaults are now handled in application.yml, but we can still override them here if needed.
-# export ADMIN_USERNAME=admin
-# export ADMIN_PASSWORD=admin123
+echo "Setting up development environment..."
 
-echo "Starting Policy Engine Backend (Dev Mode)..."
-echo "Credentials: $ADMIN_USERNAME / $ADMIN_PASSWORD"
+# 1. Start Backend
+echo "Starting Backend..."
+cd "$ROOT_DIR/backend" || exit
+nohup mvn clean package spring-boot:run -DskipTests > backend.log 2>&1 &
+BACKEND_PID=$!
+echo $BACKEND_PID > "$ROOT_DIR/backend.pid"
+echo "Backend started with PID $BACKEND_PID. Logs: backend/backend.log"
 
-# Run Maven in background with nohup
-nohup mvn clean package spring-boot:run > backend.log 2>&1 &
-PID=$!
+# 2. Build Client
+echo "Building Client..."
+cd "$ROOT_DIR/policy-engine-client" || exit
+mvn clean install > client-build.log 2>&1
+if [ $? -eq 0 ]; then
+    echo "Client built successfully."
+else
+    echo "Client build failed. Check policy-engine-client/client-build.log"
+    exit 1
+fi
 
-# Save PID to file in root directory (since we cd'd into backend, root is ../)
-echo $PID > ../backend.pid
+# 2.5 Wait for Backend to be ready
+echo "Waiting for Backend to start on port 8080..."
+max_retries=30
+count=0
+while ! nc -z localhost 8080; do   
+  sleep 2
+  count=$((count+1))
+  if [ $count -ge $max_retries ]; then
+    echo "Backend failed to start within 60 seconds."
+    exit 1
+  fi
+done
+echo "Backend is up!"
 
-echo "Backend started with PID $PID"
-echo "Logs available in backend/backend.log"
+# 3. Start Reference App
+echo "Starting Reference App..."
+cd "$ROOT_DIR/policy-engine-reference-app" || exit
+nohup mvn clean package spring-boot:run > reference-app.log 2>&1 &
+REF_APP_PID=$!
+echo $REF_APP_PID > "$ROOT_DIR/reference-app.pid"
+echo "Reference App started with PID $REF_APP_PID. Logs: policy-engine-reference-app/reference-app.log"
+
+echo "Development environment started."

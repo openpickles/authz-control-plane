@@ -2,8 +2,7 @@ package org.openpickles.policy.engine.aop;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -18,22 +17,30 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Aspect
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class AuditAspect {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditAspect.class);
 
     private final AuditService auditService;
     private final ObjectMapper objectMapper;
 
+    public AuditAspect(AuditService auditService, ObjectMapper objectMapper) {
+        this.auditService = auditService;
+        this.objectMapper = objectMapper;
+    }
+
     @Around("@annotation(auditable)")
     public Object auditMethod(ProceedingJoinPoint joinPoint, Auditable auditable) throws Throwable {
-        long startTime = System.currentTimeMillis();
+
         String status = "SUCCESS";
         String failureReason = null;
         Object result = null;
-        String oldValues = null;
+
         String newValues = null;
         String resourceId = null;
 

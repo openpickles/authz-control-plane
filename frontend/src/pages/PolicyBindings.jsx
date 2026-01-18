@@ -27,6 +27,8 @@ const PolicyBindings = () => {
         policyIds: [],
         evaluationMode: 'DIRECT'
     });
+    const [isCustomType, setIsCustomType] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Load Bindings (Paginated)
     const loadBindings = useCallback(async () => {
@@ -72,13 +74,24 @@ const PolicyBindings = () => {
     // Handlers
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+
+        if (!formData.resourceType) {
+            alert('Please select or enter a resource type');
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
             await policyBindingService.create(formData);
             setShowCreate(false);
-            setFormData({ resourceType: '', context: '', policyIds: [], evaluationMode: 'DIRECT' });
+            setFormData({ resourceType: '', context: '', policyIds: [], evaluationMode: 'DIRECT' }); // Reset form data
+            loadHelpers();
             loadBindings();
         } catch (error) {
             console.error('Error creating binding:', error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -107,7 +120,7 @@ const PolicyBindings = () => {
         'ui_access'
     ];
 
-    const evaluationModes = ['DIRECT', 'ATTRIBUTE', 'CONDITION'];
+    const evaluationModes = ['DIRECT', 'RBAC_ONLY', 'PBC_CHAIN', 'ATTRIBUTE', 'CONDITION'];
 
     // Columns
     const columns = [
@@ -219,10 +232,17 @@ const PolicyBindings = () => {
                         <label htmlFor="resourceType" className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
                         <select
                             id="resourceType"
-                            value={formData.resourceType}
-                            onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
+                            value={isCustomType ? 'custom' : formData.resourceType}
+                            onChange={(e) => {
+                                if (e.target.value === 'custom') {
+                                    setIsCustomType(true);
+                                    setFormData({ ...formData, resourceType: '' });
+                                } else {
+                                    setIsCustomType(false);
+                                    setFormData({ ...formData, resourceType: e.target.value });
+                                }
+                            }}
                             className="input-field"
-                            required
                         >
                             <option value="">Select Resource Type</option>
                             {resourceTypes.map(p => (
@@ -230,9 +250,10 @@ const PolicyBindings = () => {
                             ))}
                             <option value="custom">Custom / Other</option>
                         </select>
-                        {formData.resourceType === 'custom' && (
+                        {isCustomType && (
                             <input
                                 type="text"
+                                value={formData.resourceType}
                                 onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
                                 placeholder="e.g. widget"
                                 className="input-field mt-2"

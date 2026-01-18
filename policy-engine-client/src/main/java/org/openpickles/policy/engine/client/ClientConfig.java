@@ -5,6 +5,7 @@ public class ClientConfig {
     private String bundleName;
     private String opaUrl;
     private boolean autoUpdateOpa;
+    private boolean failFast;
     private String transportType = "WEBSOCKET";
     private String kafkaBootstrapServers;
     private String kafkaTopic;
@@ -15,6 +16,8 @@ public class ClientConfig {
     private String rabbitPassword;
     private String rabbitExchange;
     private String authHeader; // E.g. "Basic ..." or "Bearer ..."
+    private String manifestPath;
+    private String publicKeyPath;
 
     public ClientConfig() {
     }
@@ -25,6 +28,7 @@ public class ClientConfig {
         private String bundleName;
         private String opaUrl;
         private boolean autoUpdateOpa;
+        private boolean failFast = false;
         private String transportType = "WEBSOCKET";
         private String kafkaBootstrapServers;
         private String kafkaTopic;
@@ -35,6 +39,13 @@ public class ClientConfig {
         private String rabbitPassword;
         private String rabbitExchange;
         private String authHeader;
+        private String manifestPath;
+        private String publicKeyPath;
+
+        public Builder failFast(boolean failFast) {
+            this.failFast = failFast;
+            return this;
+        }
 
         public Builder controlPlaneUrl(String controlPlaneUrl) {
             this.controlPlaneUrl = controlPlaneUrl;
@@ -106,6 +117,16 @@ public class ClientConfig {
             return this;
         }
 
+        public Builder manifestPath(String manifestPath) {
+            this.manifestPath = manifestPath;
+            return this;
+        }
+
+        public Builder publicKeyPath(String publicKeyPath) {
+            this.publicKeyPath = publicKeyPath;
+            return this;
+        }
+
         public ClientConfig build() {
             ClientConfig config = new ClientConfig();
             config.controlPlaneUrl = this.controlPlaneUrl;
@@ -123,6 +144,9 @@ public class ClientConfig {
             config.rabbitPassword = this.rabbitPassword;
             config.rabbitExchange = this.rabbitExchange;
             config.authHeader = this.authHeader;
+            config.manifestPath = this.manifestPath;
+            config.publicKeyPath = this.publicKeyPath;
+            config.failFast = this.failFast;
             return config;
         }
     }
@@ -161,6 +185,14 @@ public class ClientConfig {
 
     public void setAutoUpdateOpa(boolean autoUpdateOpa) {
         this.autoUpdateOpa = autoUpdateOpa;
+    }
+
+    public boolean isFailFast() {
+        return failFast;
+    }
+
+    public void setFailFast(boolean failFast) {
+        this.failFast = failFast;
     }
 
     public String getTransportType() {
@@ -241,5 +273,21 @@ public class ClientConfig {
 
     public void setAuthHeader(String authHeader) {
         this.authHeader = authHeader;
+    }
+
+    public String getManifestPath() {
+        return manifestPath;
+    }
+
+    public void setManifestPath(String manifestPath) {
+        this.manifestPath = manifestPath;
+    }
+
+    public String getPublicKeyPath() {
+        return publicKeyPath;
+    }
+
+    public void setPublicKeyPath(String publicKeyPath) {
+        this.publicKeyPath = publicKeyPath;
     }
 }

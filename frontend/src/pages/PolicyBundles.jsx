@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Download, Package, Box } from 'lucide-react';
-import { policyBundleService, policyBindingService } from '../services/api';
+import { policyBundleService, policyBindingService, serviceRegistryService } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import SlideOver from '../components/SlideOver';
 
@@ -22,8 +22,17 @@ const PolicyBundles = () => {
         description: '',
         bindingIds: [],
         wasmEnabled: false,
-        entrypoint: 'allow'
+        entrypoint: 'allow',
+        serviceOwner: ''
     });
+
+    const [services, setServices] = useState([]);
+
+    // Load Services for dropdown
+    useEffect(() => {
+        serviceRegistryService.getAll().then(res => setServices(res.data)).catch(console.error);
+    }, []);
+
 
     // Load Bundles (Paginated)
     const loadBundles = useCallback(async () => {
@@ -73,7 +82,7 @@ const PolicyBundles = () => {
         try {
             await policyBundleService.create(formData);
             setShowCreate(false);
-            setFormData({ name: '', description: '', bindingIds: [], wasmEnabled: false, entrypoint: 'allow' });
+            setFormData({ name: '', description: '', bindingIds: [], wasmEnabled: false, entrypoint: 'allow', serviceOwner: '' });
             loadBundles(); // Refresh list
         } catch (error) {
             console.error('Error creating bundle:', error);
@@ -212,8 +221,22 @@ const PolicyBundles = () => {
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 placeholder="Briefly describe the purpose of this bundle..."
                                 className="input-field min-h-[80px]"
-                                rows={3}
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Service Owner</label>
+                            <select
+                                value={formData.serviceOwner}
+                                onChange={(e) => setFormData({ ...formData, serviceOwner: e.target.value })}
+                                className="input-field"
+                                required
+                            >
+                                <option value="">Select a Service...</option>
+                                {services.map(s => (
+                                    <option key={s.id} value={s.name}>{s.name} ({s.registrationMode})</option>
+                                ))}
+                            </select>
+                            <p className="mt-1 text-xs text-slate-500">The service that owns this bundle.</p>
                         </div>
                     </div>
 

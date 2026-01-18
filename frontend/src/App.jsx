@@ -11,6 +11,8 @@ import ResourceTypes from './pages/ResourceTypes';
 import PolicyBindings from './pages/PolicyBindings';
 import PolicyBundles from './pages/PolicyBundles';
 import AuditLog from './pages/AuditLog';
+import ServicesList from './pages/ServicesList';
+import ServiceDetail from './pages/ServiceDetail';
 
 import Login from './pages/Login';
 
@@ -26,6 +28,8 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/services" element={<ServicesList />} />
+              <Route path="/services/:name" element={<ServiceDetail />} />
               <Route path="/policies" element={<PolicyEditor />} />
               <Route path="/entitlements" element={<Entitlements />} />
               <Route path="/resource-types" element={<ResourceTypes />} />

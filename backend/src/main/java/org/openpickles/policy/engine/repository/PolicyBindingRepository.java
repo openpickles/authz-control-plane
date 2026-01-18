@@ -19,4 +19,9 @@ public interface PolicyBindingRepository extends JpaRepository<PolicyBinding, Lo
             org.springframework.data.domain.Pageable pageable);
 
     List<PolicyBinding> findByPolicyIdsContaining(Long policyId);
+
+    Optional<PolicyBinding> findByResourceTypeAndContextAndServiceOwner(String resourceType, String context,
+            String serviceOwner);
+
+    List<PolicyBinding> findByContextAndServiceOwner(String context, String serviceOwner);
 }

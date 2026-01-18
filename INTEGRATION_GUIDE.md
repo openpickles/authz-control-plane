@@ -65,6 +65,40 @@ To allow admins to create Entitlements and Policies for your service, you must e
 ]
 ```
 
+### 1.4 Direct Evaluation Endpoint
+**Method**: `POST`
+**Path**: `/api/v1/evaluation/evaluate`
+**Purpose**: Directly evaluate a policy binding for a given context and input without downloading bundles (Control Plane Evaluation).
+
+**Request Body**:
+```json
+{
+  "resourceType": "loan-service:loan",
+  "context": "transaction-write",
+  "input": {
+    "user": "alice",
+    "amount": 5000,
+    "role": "USER"
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "allowed": true,
+  "policy": "loan-policy",
+  "reason": null
+}
+```
+or
+```json
+{
+  "allowed": false,
+  "reason": "No policy allowed access"
+}
+```
+
 ---
 
 ## Part 2: Data Plane Integration (Enforcement)
@@ -254,3 +288,59 @@ All updates are broadcast as **CloudEvents**.
 **RabbitMQ**:
 - Default Exchange: `policy.updates` (Fanout)
 - Bind a temporary queue to this exchange.
+
+---
+
+## Part 6: Distributed Policy Sync (Manifest)
+
+For services that want to define their own policies, bindings, and bundles declaratively, you can use the **Policy Manifest**.
+
+### 6.1 `policy-manifest.yaml`
+Create a file named `policy-manifest.yaml` in your project root or classpath.
+
+```yaml
+apiVersion: "v1"
+service:
+  name: "finance-service"
+  owner: "team-finance"
+  description: "Handles payments and invoices"
+
+resourceTypes:
+  - name: "invoice"
+    attributes:
+      - name: "amount"
+        type: "number"
+
+policies:
+  - name: "invoice_policy.rego"
+    version: "1.0.0"
+    content: |
+      package invoice_policy
+      default allow = false
+      allow { input.amount < 1000 }
+
+bundles:
+  - name: "finance_bundle"
+    targetService: "finance-service"
+    refreshInterval: "60s"
+    policies: [ "invoice_policy.rego" ]
+
+bindings:
+  - name: "bind_invoice"
+    resourceType: "finance-service:invoice"
+    bundle: "finance_bundle"
+    context: "http"
+```
+
+### 6.2 Sync API
+To push this manifest to the Policy Engine:
+**Method**: `POST`
+**Path**: `/api/v1/dist/sync`
+**Content-Type**: `application/json`
+**Body**:
+```json
+{
+  "manifest": { ... } // deserialized YAML
+}
+```
+*Note: The Java Client SDK handles this automatically via `client.bootstrap()`.*

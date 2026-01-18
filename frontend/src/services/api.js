@@ -14,10 +14,16 @@ export const policyService = {
     getAll: (params) => api.get('/policies', { params }),
     getById: (id) => api.get(`/policies/${id}`),
     create: (policy) => api.post('/policies', policy),
+    createCustom: (policy) => api.post('/policies/custom', policy),
     update: (id, policy) => api.put(`/policies/${id}`, policy),
     delete: (id) => api.delete(`/policies/${id}`),
     sync: (id) => api.post(`/policies/${id}/sync`),
     push: (id, commitMessage) => api.post(`/policies/${id}/push`, { commitMessage }),
+};
+
+export const serviceRegistryService = {
+    getAll: () => api.get('/services'),
+    create: (service) => api.post('/services', service),
 };
 
 export const evaluationService = {
