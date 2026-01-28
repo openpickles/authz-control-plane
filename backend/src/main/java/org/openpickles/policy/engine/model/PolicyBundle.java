@@ -1,6 +1,7 @@
 package org.openpickles.policy.engine.model;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +27,22 @@ public class PolicyBundle {
     @CollectionTable(name = "policy_bundle_bindings", joinColumns = @JoinColumn(name = "bundle_id"))
     @Column(name = "binding_id")
     private List<Long> bindingIds = new ArrayList<>();
+
+    private String serviceOwner;
+
+    // Added for Federated Model
+    @Column(name = "target_service")
+    private String targetService;
+
+    @Column(name = "refresh_interval")
+    private String refreshInterval;
+
+    @ManyToMany(mappedBy = "subscribedBundles")
+    @JsonIgnore
+    private List<ServiceRegistry> subscribers = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    private org.openpickles.policy.engine.model.Policy.PolicyOrigin origin = org.openpickles.policy.engine.model.Policy.PolicyOrigin.CUSTOM;
 
     public PolicyBundle() {
     }
@@ -85,5 +102,45 @@ public class PolicyBundle {
 
     public void setEntrypoint(String entrypoint) {
         this.entrypoint = entrypoint;
+    }
+
+    public String getServiceOwner() {
+        return serviceOwner;
+    }
+
+    public void setServiceOwner(String serviceOwner) {
+        this.serviceOwner = serviceOwner;
+    }
+
+    public org.openpickles.policy.engine.model.Policy.PolicyOrigin getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(org.openpickles.policy.engine.model.Policy.PolicyOrigin origin) {
+        this.origin = origin;
+    }
+
+    public String getTargetService() {
+        return targetService;
+    }
+
+    public void setTargetService(String targetService) {
+        this.targetService = targetService;
+    }
+
+    public String getRefreshInterval() {
+        return refreshInterval;
+    }
+
+    public void setRefreshInterval(String refreshInterval) {
+        this.refreshInterval = refreshInterval;
+    }
+
+    public List<ServiceRegistry> getSubscribers() {
+        return subscribers;
+    }
+
+    public void setSubscribers(List<ServiceRegistry> subscribers) {
+        this.subscribers = subscribers;
     }
 }

@@ -6,8 +6,10 @@ import java.util.function.Consumer;
 public interface NotificationTransport {
     /**
      * Connect to the transport layer.
+     * 
+     * @throws Exception if connection fails
      */
-    void connect();
+    void connect() throws Exception;
 
     /**
      * Subscribe to a specific topic.

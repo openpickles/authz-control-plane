@@ -1,26 +1,38 @@
 #!/bin/bash
 
-PID_FILE="backend.pid"
+# Function to stop a process by PID file
+stop_process() {
+    local SERVICE_NAME=$1
+    local PID_FILE=$2
 
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if ps -p "$PID" > /dev/null; then
-        echo "Stopping Policy Engine Backend (PID $PID)..."
-        kill "$PID"
-        
-        # Wait for process to exit
-        sleep 2
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
         if ps -p "$PID" > /dev/null; then
-           echo "Force killing..."
-           kill -9 "$PID"
+            echo "Stopping $SERVICE_NAME (PID $PID)..."
+            kill "$PID"
+            
+            # Wait for process to exit
+            sleep 2
+            if ps -p "$PID" > /dev/null; then
+               echo "Force killing $SERVICE_NAME..."
+               kill -9 "$PID"
+            fi
+            
+            echo "$SERVICE_NAME stopped."
+            rm "$PID_FILE"
+        else
+            echo "Process $PID for $SERVICE_NAME not found. Cleaning up stale PID file."
+            rm "$PID_FILE"
         fi
-        
-        echo "Backend stopped."
-        rm "$PID_FILE"
     else
-        echo "Process $PID not found. Cleaning up stale PID file."
-        rm "$PID_FILE"
+        echo "No $PID_FILE found for $SERVICE_NAME. Is it running?"
     fi
-else
-    echo "No $PID_FILE found. Is the server running?"
-fi
+}
+
+# Stop Backend
+stop_process "Backend" "backend.pid"
+
+# Stop Reference App
+stop_process "Reference App" "reference-app.pid"
+
+echo "Development environment stopped."

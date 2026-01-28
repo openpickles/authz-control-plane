@@ -43,6 +43,35 @@ public class PolicyService {
         return policyRepository.findAll(pageable);
     }
 
+    public org.springframework.data.domain.Page<Policy> getPolicies(
+            String serviceOwner, org.openpickles.policy.engine.model.Policy.PolicyOrigin origin,
+            String search, org.springframework.data.domain.Pageable pageable) {
+
+        // This requires a dynamic query or specification.
+        // For simplicity, implement a basic repository method or just filter by
+        // serviceOwner if present.
+        // I need to add finds to PolicyRepository for this.
+        // Let's assume Repository has findByServiceOwner...
+        // Wait, I should add the repo method first strictly speaking. Or use
+        // Specification/Example.
+        // I will use Example matcher as it is easier here.
+
+        org.openpickles.policy.engine.model.Policy probe = new org.openpickles.policy.engine.model.Policy();
+        if (serviceOwner != null)
+            probe.setServiceOwner(serviceOwner);
+        if (origin != null)
+            probe.setOrigin(origin);
+        if (search != null)
+            probe.setName(search); // Approximate
+
+        org.springframework.data.domain.ExampleMatcher matcher = org.springframework.data.domain.ExampleMatcher
+                .matching()
+                .withIgnoreNullValues()
+                .withStringMatcher(org.springframework.data.domain.ExampleMatcher.StringMatcher.CONTAINING);
+
+        return policyRepository.findAll(org.springframework.data.domain.Example.of(probe, matcher), pageable);
+    }
+
     @Auditable(action = "CREATE", resourceType = "POLICY")
     public Policy createPolicy(Policy policy) {
         validatePolicy(policy);
@@ -71,6 +100,13 @@ public class PolicyService {
         policy.setGitBranch(policyDetails.getGitBranch());
         policy.setGitPath(policyDetails.getGitPath());
         policy.setFilename(policyDetails.getFilename());
+
+        if (policyDetails.getOrigin() != null) {
+            policy.setOrigin(policyDetails.getOrigin());
+        }
+        if (policyDetails.getServiceOwner() != null) {
+            policy.setServiceOwner(policyDetails.getServiceOwner());
+        }
 
         Policy saved = policyRepository.save(policy);
         notifyPolicyChange(saved);

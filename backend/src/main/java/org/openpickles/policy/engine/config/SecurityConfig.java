@@ -2,52 +2,40 @@ package org.openpickles.policy.engine.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-
-import static org.springframework.security.config.Customizer.withDefaults;
+import org.springframework.security.config.Customizer;
 
 @Configuration
 @EnableWebSecurity
+@Profile("prod")
 public class SecurityConfig {
+
+        private final AuthProperties authProperties;
 
         @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
         private String allowedOrigins;
 
-        @org.springframework.beans.factory.annotation.Autowired
-        private org.springframework.security.web.authentication.AuthenticationSuccessHandler successHandler;
-
-        @org.springframework.beans.factory.annotation.Autowired
-        private org.springframework.security.web.authentication.AuthenticationFailureHandler failureHandler;
-
-        @org.springframework.beans.factory.annotation.Autowired
-        private org.springframework.security.web.authentication.logout.LogoutSuccessHandler logoutSuccessHandler;
+        public SecurityConfig(AuthProperties authProperties) {
+                this.authProperties = authProperties;
+        }
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
-                                .cors(org.springframework.security.config.Customizer.withDefaults())
-                                .csrf(csrf -> csrf.disable()) // Disable CSRF for simplicity in this demo
+                                .cors(Customizer.withDefaults())
+                                .csrf(csrf -> csrf.disable())
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/h2-console/**", "/favicon.ico", "/error").permitAll() // Allow
-                                                                                                                         // H2
-                                                                                                                         // Console
-                                                                                                                         // and
-                                                                                                                         // static
-                                                                                                                         // assets
-                                                .requestMatchers("/api/v1/sync/**", "/ws/**").permitAll() // Public sync
-                                                                                                          // API and
-                                                                                                          // WebSocket
+                                                .requestMatchers("/h2-console/**", "/favicon.ico", "/error").permitAll()
+                                                // Require specific scope for registration/sync
+                                                .requestMatchers("/api/v1/dist/**")
+                                                .hasAuthority("SCOPE_policy.register")
+                                                .requestMatchers("/ws/**").permitAll() // WebSocket might need its own
+                                                                                       // auth strategy later
                                                 .anyRequest().authenticated())
-                                .formLogin(form -> form
-                                                .successHandler(successHandler)
-                                                .failureHandler(failureHandler)
-                                                .permitAll())
-                                .logout(logout -> logout
-                                                .logoutSuccessHandler(logoutSuccessHandler)
-                                                .permitAll())
-                                .httpBasic(withDefaults()) // Enable Basic Auth for API testing
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                                 .headers(headers -> headers.frameOptions(frame -> frame.disable())); // For H2 Console
 
                 return http.build();
@@ -64,28 +52,5 @@ public class SecurityConfig {
                 org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", configuration);
                 return source;
-        }
-
-        @org.springframework.beans.factory.annotation.Value("${app.security.admin.username}")
-        private String adminUsername;
-
-        @org.springframework.beans.factory.annotation.Value("${app.security.admin.password}")
-        private String adminPassword;
-
-        @Bean
-        public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
-                return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
-        }
-
-        @Bean
-        public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
-                org.springframework.security.core.userdetails.UserDetails user = org.springframework.security.core.userdetails.User
-                                .builder()
-                                .username(adminUsername)
-                                .password(passwordEncoder().encode(adminPassword))
-                                .roles("ADMIN")
-                                .build();
-
-                return new org.springframework.security.provisioning.InMemoryUserDetailsManager(user);
         }
 }

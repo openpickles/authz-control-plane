@@ -1,6 +1,8 @@
 # Centralized Policy Engine
 
-A reference implementation of a centralized authorization system for managing OPA policies and entitlements across microservices. Built with Spring Boot and React.
+A robust, distributed authorization platform designed for microservices. It combines the flexibility of **Distributed Policy-as-Code** (Teams own their policies) with the governance of a **Centralized Control Plane**.
+
+**[📖 Read the Integration Guide](INTEGRATION_GUIDE.md)** for detailed usage instructions.
 
 ![Dashboard](https://via.placeholder.com/800x400?text=Policy+Engine+Dashboard)
 
@@ -10,13 +12,35 @@ A reference implementation of a centralized authorization system for managing OP
 - **Enhanced Authoring**: Professional editor (Monaco) with syntax highlighting and direct **File Upload** support.
 - **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
 - **Entitlement Management**: Define fine-grained access control rules (User/Role/Group) with **Server-Side Pagination** and **Search**.
-- **Entitlement Sync**: Batch push/upsert entitlements from external domain services.
+- **Distributed Policy-as-Code**: Teams develop policies alongside their service code. The Control Plane automatically bootstraps these definitions via `policy-manifest.yaml`.
+- **Hybrid Management**: Support for both **Code-First** (Bootstrapping) and **UI-First** (Direct Creation) policy workflows.
+- **Layered Customization**: Security teams can overrides Product policies (defined by devs) with Custom policies using a safe "Copy-on-Write" model.
 - **Resource Provider Integration**: Register and manage microservices with **Dynamic Filter Schema** support.
 - **Dynamic Bundle Download**: Download policies tailored to specific resource types (e.g., `?resourceTypes=DOCUMENT`).
 - **Policy Metadata**: Policies now support `description` and `filename` metadata for better organization.
-- **Multi-Policy Binding**: Bind multiple policies to a single context, allowing modular policy composition.
+- **Flexible Policy Binding**: Support for **PBC Model** (RBAC -> ABAC -> ReBAC), **RBAC Only**, and **Direct** evaluation modes.
 - **Real-time Updates**: Instant policy propagation via **WebSocket**, **Kafka**, or **RabbitMQ**.
+- **Shared Bundles & Federation**: Support for **Shared Bundles** where services can define ("own") bundles and subscribe to others. The Control Plane merges all subscribed bundles into a single composite configuration for the client ("Composite Download").
 - **Modern & Consistent UI**: Standardized "DataGrid" and "SlideOver" components across all listing pages.
+
+## Federated Policy Model
+
+The Policy Engine now supports a **Federated Model** for policy distribution:
+
+1.  **Ownership**: A service that defines a bundle in its `policy-manifest.yaml` becomes the **Owner**. It controls the bundle's `contexts` and configuration.
+2.  **Subscription**: Other services can include the same bundle name in their manifest to **Subscribe**. They will receive the policies but cannot modify the bundle definition.
+3.  **Composite Download**: When a service requests its configuration, the Control Plane aggregates all bundles it owns or subscribes to into a single, seamless download.
+
+### Example Manifest (`policy-manifest.yaml`)
+```yaml
+bundles:
+  - name: "my-service-bundle"       # Private/Owned bundle
+    targetService: "my-service"
+    contexts: ["finance", "payments"]
+  - name: "shared-compliance-bundle" # Shared/Subscribed bundle
+    targetService: "compliance-service" # Defined by another service
+    contexts: ["audit-logs"]
+```
 
 ## Testing
 
@@ -96,21 +120,76 @@ This project includes a GitHub Actions workflow `.github/workflows/quality-check
 - **Backend**: Java 17, Spring Boot 3.3, H2 Database, Spring Security, JPA.
 - **Frontend**: React 18, Vite, TailwindCSS, Lucide Icons.
 
+## Client Configuration
+
+The `policy-engine-client` can be configured via the `ClientConfig` builder key properties:
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `controlPlaneUrl` | String | - | URL of the Policy Engine Control Plane (e.g., `http://localhost:8080`) |
+| `manifestPath` | String | - | Path to `policy-manifest.yaml` (classpath: or file:) |
+| `bundleName` | String | - | Name of the bundle to download (must match manifest) |
+| `authHeader` | String | - | Authorization header value (e.g., `Bearer <token>` or `Basic <cred>`) |
+| `failFast` | boolean | `false` | If true, throws exception if initial connection fails |
+| `retryInitialInterval`| long | `2000` | Initial retry interval in ms |
+| `retryMaxInterval` | long | `60000`| Maximum retry interval in ms |
+| `retryMultiplier` | double | `2.0` | Multiplier for exponential backoff |
+
 ## Real-time Transport Configuration
 
 The Policy Engine supports multiple transport mechanisms for broadcasting policy updates. The default is **WebSocket**, but **Kafka** and **RabbitMQ** are also fully supported.
 
-**Configuration (`application.yml`):**
+### 1. WebSocket (Default)
+Simple, direct connection to the Control Plane. No extra infrastructure required.
 ```yaml
 policy:
   engine:
     transport:
-      type: KAFKA # Options: WEBSOCKET (default), KAFKA, RABBITMQ
-      kafka:
-        topic: policy-updates # Default
-      rabbitmq:
-        exchange: policy.updates # Default
+      type: WEBSOCKET
 ```
+
+### 2. Kafka
+Production-grade durability and scale.
+```yaml
+policy:
+  engine:
+    transport:
+      type: KAFKA
+      kafka:
+        topic: policy-updates
+        bootstrap-servers: localhost:9092 # Set in ClientConfig
+        group-id: my-service-group      # Set in ClientConfig
+```
+
+### 3. RabbitMQ
+Standard AMQP messaging.
+```yaml
+policy:
+  engine:
+    transport:
+      type: RABBITMQ
+      rabbitmq:
+        exchange: policy.updates
+        host: localhost                 # Set in ClientConfig
+        port: 5672                      # Set in ClientConfig
+        username: guest                 # Set in ClientConfig
+        password: guest                 # Set in ClientConfig
+```
+
+## API Overview
+
+The Control Plane exposes a comprehensive REST API for management and integration.
+
+| Category | Endpoint Base | Description |
+| :--- | :--- | :--- |
+| **Evaluation** | `/api/v1/evaluation` | Real-time policy evaluation requests |
+| **Sync** | `/api/v1/sync` | Used by clients to bootstrap definitions (`policy-manifest.yaml`) |
+| **Bundles** | `/api/v1/bundles` | Download policy bundles (WASM/Rego) |
+| **Policies** | `/api/v1/policies` | CRUD operations for OPA policies |
+| **Resources** | `/api/v1/resource-types` | Manage resource type definitions |
+| **Services** | `/api/v1/services` | Registry of connected microservices |
+| **Audit** | `/api/v1/audit` | Access policy evaluation logs |
+
 
 ## Getting Started
 

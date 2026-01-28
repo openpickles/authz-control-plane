@@ -53,18 +53,85 @@ public class PolicyBundleController {
     public org.springframework.data.domain.Page<PolicyBundle> getAllBundles(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search) {
-        logger.debug("Fetching bundles, page: {}, size: {}, search: {}", page, size, search);
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String service) {
+        logger.debug("Fetching bundles, page: {}, size: {}, search: {}, service: {}", page, size, search, service);
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
-        if (search != null && !search.trim().isEmpty()) {
-            return bundleRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+
+        if (service != null && !service.isEmpty()) {
+            // New logic: Return ALL subscribed bundles for the service (which includes
+            // owned ones)
+            java.util.Optional<org.openpickles.policy.engine.model.ServiceRegistry> serviceRegOpt = serviceRegistryRepository
+                    .findByName(service);
+
+            if (serviceRegOpt.isPresent()) {
+                Set<PolicyBundle> bundles = serviceRegOpt.get().getSubscribedBundles();
+
+                // Filter by search query if present
+                List<PolicyBundle> filtered = bundles.stream()
+                        .filter(b -> search == null || search.trim().isEmpty()
+                                || b.getName().toLowerCase().contains(search.trim().toLowerCase()))
+                        .sorted(Comparator.comparing(PolicyBundle::getName)) // Sort specifically for consistent paging
+                        .collect(Collectors.toList());
+
+                // Paging in memory
+                int start = (int) pageable.getOffset();
+                int end = Math.min((start + pageable.getPageSize()), filtered.size());
+
+                List<PolicyBundle> pagedList;
+                if (start > filtered.size()) {
+                    pagedList = new ArrayList<>();
+                } else {
+                    pagedList = filtered.subList(start, end);
+                }
+
+                return new org.springframework.data.domain.PageImpl<>(pagedList, pageable, filtered.size());
+            } else {
+                return org.springframework.data.domain.Page.empty();
+            }
         }
-        return bundleRepository.findAll(pageable);
+
+        // Default: Find all global bundles (or just all bundles if no service
+        // specified)
+        if (search == null || search.trim().isEmpty()) {
+            return bundleRepository.findAll(pageable);
+        }
+
+        org.openpickles.policy.engine.model.PolicyBundle probe = new org.openpickles.policy.engine.model.PolicyBundle();
+        probe.setName(search.trim());
+
+        org.springframework.data.domain.ExampleMatcher matcher = org.springframework.data.domain.ExampleMatcher
+                .matching()
+                .withIgnoreNullValues()
+                .withIgnorePaths("wasmEnabled", "entrypoint", "origin", "id") // Ignore fields with default values
+                .withStringMatcher(org.springframework.data.domain.ExampleMatcher.StringMatcher.CONTAINING);
+
+        return bundleRepository.findAll(org.springframework.data.domain.Example.of(probe, matcher), pageable);
     }
+
+    @Autowired
+    private org.openpickles.policy.engine.repository.ServiceRegistryRepository serviceRegistryRepository;
 
     @PostMapping
     public PolicyBundle createBundle(@RequestBody PolicyBundle bundle) {
         logger.info("Creating bundle: {}", bundle.getName());
+
+        // Validate Service Owner
+        if (bundle.getServiceOwner() == null || bundle.getServiceOwner().isEmpty()) {
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Service Owner is required for bundle creation", "FUNC_BUNDLE_NO_SERVICE");
+        }
+
+        // Verify service exists (Optional but recommended)
+        if (serviceRegistryRepository.findByName(bundle.getServiceOwner()).isEmpty()) {
+            // For strict mode, we might want to fail. But legacy custom bundles might not
+            // have service registered?
+            // Requirement says "all these will be associated to a service".
+            // So we should enforce it.
+            throw new org.openpickles.policy.engine.exception.FunctionalException(
+                    "Service not registered: " + bundle.getServiceOwner(), "FUNC_Vk_SERVICE_NOT_FOUND");
+        }
+
         if (bundle.isWasmEnabled()) {
             validateWasmBundle(bundle);
         }
@@ -123,7 +190,7 @@ public class PolicyBundleController {
         return generateBundleResponse(bindings, "bundle-" + Instant.now().toEpochMilli(), false, "allow");
     }
 
-    @GetMapping("/{id}/download")
+    @GetMapping("/{id:[0-9]+}/download")
     public ResponseEntity<byte[]> downloadBundle(@PathVariable Long id) {
         logger.info("Downloading bundle by id: {}", id);
         return bundleRepository.findById(id)
@@ -136,16 +203,134 @@ public class PolicyBundleController {
                         "Bundle not found with id: " + id, "FUNC_003"));
     }
 
+    @GetMapping("/{name}/download")
+    public ResponseEntity<byte[]> downloadBundleByName(
+            @PathVariable String name,
+            @RequestParam(required = false) String service) {
+        logger.info("Downloading bundle by name: {} for service: {}", name, service);
+
+        // Find bundle by name (checking both serviceOwner and global visibility logic
+        // if we had it)
+        // For now, we assume if we can find it by name, we start there.
+        // But in the new model, we want the "Effective Bundle" for the service.
+
+        List<PolicyBinding> effectiveBindings = new ArrayList<>();
+        boolean wasmEnabled = false;
+        String entrypoint = "allow";
+        String filenameBase = "bundle-" + name;
+
+        if (service != null && !service.isEmpty()) {
+            java.util.Optional<org.openpickles.policy.engine.model.ServiceRegistry> serviceRegOpt = serviceRegistryRepository
+                    .findByName(service);
+
+            if (serviceRegOpt.isPresent()) {
+                org.openpickles.policy.engine.model.ServiceRegistry serviceReg = serviceRegOpt.get();
+                Set<PolicyBundle> subscriptions = serviceReg.getSubscribedBundles();
+
+                // If the requested bundle is NOT in subscriptions, we should try to find it
+                // specifically
+                // (Compatibility for existing behavior or ad-hoc requests)
+                // But generally, the 'name' param acts as the primary identifier.
+
+                // Merge all subscribed bundles
+                for (PolicyBundle b : subscriptions) {
+                    List<PolicyBinding> bundleBindings = bindingRepository.findAllById(b.getBindingIds());
+                    effectiveBindings.addAll(bundleBindings);
+
+                    // Take WASM/Entrypoint settings from the *requested* bundle if it matches
+                    // or just uses the first one that has them enabled?
+                    // Strategy: The requested bundle (name) is the "Primary" one.
+                    if (b.getName().equals(name)) {
+                        wasmEnabled = b.isWasmEnabled();
+                        entrypoint = b.getEntrypoint();
+                    }
+                }
+
+                // If effectiveBindings is empty, maybe the requested bundle exists but is not
+                // subscribed?
+                // This happens during first run or if 'name' is just a pointer.
+                // Let's fallback to strict single bundle lookup if Merge resulted in nothing
+                // relevant to 'name'?
+                // Or just proceed.
+            } else {
+                // Service not found? Fallback to legacy single bundle lookup
+                return downloadSingleBundleLegacy(name, service);
+            }
+        } else {
+            // No service param? Just download the named bundle alone
+            return downloadSingleBundleLegacy(name, null);
+        }
+
+        // Deduplicate bindings (by ID)
+        List<PolicyBinding> distinctBindings = effectiveBindings.stream()
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Also fetch policies for overlay logic
+        Set<Long> policyIds = distinctBindings.stream()
+                .flatMap(b -> b.getPolicyIds().stream())
+                .collect(Collectors.toSet());
+        List<Policy> productPolicies = policyRepository.findAllById(policyIds);
+
+        // Apply Custom Overlays if service is present
+        List<Policy> effectivePolicies = new ArrayList<>();
+        for (Policy productPolicy : productPolicies) {
+            if (service != null) {
+                Optional<Policy> customPolicy = policyRepository.findByNameAndServiceOwnerAndOrigin(
+                        productPolicy.getName(), service, Policy.PolicyOrigin.CUSTOM);
+                effectivePolicies.add(customPolicy.orElse(productPolicy));
+            } else {
+                effectivePolicies.add(productPolicy);
+            }
+        }
+
+        return generateBundleResponseWithPolicies(distinctBindings, effectivePolicies, filenameBase, wasmEnabled,
+                entrypoint);
+    }
+
+    private ResponseEntity<byte[]> downloadSingleBundleLegacy(String name, String service) {
+        PolicyBundle bundle = bundleRepository.findByName(name)
+                .orElseThrow(() -> new org.openpickles.policy.engine.exception.FunctionalException(
+                        "Bundle not found with name: " + name, "FUNC_004"));
+
+        List<PolicyBinding> bindings = bindingRepository.findAllById(bundle.getBindingIds());
+
+        // Apply Overlay Logic
+        List<Policy> effectivePolicies = new ArrayList<>();
+        Set<Long> policyIds = bindings.stream()
+                .flatMap(b -> b.getPolicyIds().stream())
+                .collect(Collectors.toSet());
+        List<Policy> productPolicies = policyRepository.findAllById(policyIds);
+
+        for (Policy productPolicy : productPolicies) {
+            if (service != null) {
+                Optional<Policy> customPolicy = policyRepository.findByNameAndServiceOwnerAndOrigin(
+                        productPolicy.getName(), service, Policy.PolicyOrigin.CUSTOM);
+                effectivePolicies.add(customPolicy.orElse(productPolicy));
+            } else {
+                effectivePolicies.add(productPolicy);
+            }
+        }
+
+        return generateBundleResponseWithPolicies(bindings, effectivePolicies, "bundle-" + name, bundle.isWasmEnabled(),
+                bundle.getEntrypoint());
+    }
+
     private ResponseEntity<byte[]> generateBundleResponse(List<PolicyBinding> bindings, String filenameBase,
+            boolean wasmEnabled, String entrypoint) {
+        Set<Long> policyIds = bindings.stream()
+                .flatMap(b -> b.getPolicyIds().stream())
+                .collect(Collectors.toSet());
+        List<Policy> policies = policyRepository.findAllById(policyIds);
+        return generateBundleResponseWithPolicies(bindings, policies, filenameBase, wasmEnabled, entrypoint);
+    }
+
+    private ResponseEntity<byte[]> generateBundleResponseWithPolicies(List<PolicyBinding> bindings,
+            List<Policy> policies, String filenameBase,
             boolean wasmEnabled, String entrypoint) {
         Path tempDir = null;
         try {
             // 1. Fetch Data
-            Set<Long> policyIds = bindings.stream()
-                    .flatMap(b -> b.getPolicyIds().stream())
-                    .collect(Collectors.toSet());
-            List<Policy> policies = policyRepository.findAllById(policyIds);
-
             Set<String> resourceTypeKeys = bindings.stream()
                     .map(PolicyBinding::getResourceType)
                     .collect(Collectors.toSet());
@@ -313,7 +498,8 @@ public class PolicyBundleController {
                 String epName = "allow";
                 if (entrypoint != null && !entrypoint.isEmpty()) {
                     if (!entrypoint.matches("^\\w+$")) {
-                        throw new SecurityException("Invalid entrypoint format");
+                        logger.error("Invalid entrypoint format: '{}'", entrypoint);
+                        throw new SecurityException("Invalid entrypoint format: " + entrypoint);
                     }
                     epName = entrypoint;
                 }

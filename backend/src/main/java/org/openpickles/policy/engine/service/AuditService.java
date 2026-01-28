@@ -1,8 +1,7 @@
 package org.openpickles.policy.engine.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.openpickles.policy.engine.model.AuditLog;
 import org.openpickles.policy.engine.repository.AuditLogRepository;
 import org.springframework.scheduling.annotation.Async;
@@ -16,13 +15,19 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class AuditService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
+
     private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper;
+
+    public AuditService(AuditLogRepository auditLogRepository) {
+        this.auditLogRepository = auditLogRepository;
+    }
 
     /**
      * Asynchronously creates and saves an audit log entry.

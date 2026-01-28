@@ -3,19 +3,20 @@ package org.openpickles.policy.engine.event;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.provider.EventFormatProvider;
 import io.cloudevents.jackson.JsonFormat;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.nio.charset.StandardCharsets;
 
-@Slf4j
-@RequiredArgsConstructor
 public class WebSocketEventPublisher implements EventPublisher {
 
+    private static final Logger log = LoggerFactory.getLogger(WebSocketEventPublisher.class);
     private final SimpMessagingTemplate messagingTemplate;
+
+    public WebSocketEventPublisher(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
 
     @Override
     public void publish(String topic, CloudEvent event) {

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "policy_bindings", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "resourceType", "context" })
+        @UniqueConstraint(columnNames = { "resourceType", "context", "serviceOwner" })
 })
 public class PolicyBinding {
 
@@ -23,13 +23,17 @@ public class PolicyBinding {
     @Column(name = "policy_id")
     private java.util.List<Long> policyIds = new java.util.ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String evaluationMode; // DIRECT, ATTRIBUTE, CONDITION
+    private EvaluationMode evaluationMode; // DIRECT, RBAC_ONLY, PBC_CHAIN, ATTRIBUTE, CONDITION
+
+    private String serviceOwner;
 
     public PolicyBinding() {
     }
 
-    public PolicyBinding(String resourceType, String context, java.util.List<Long> policyIds, String evaluationMode) {
+    public PolicyBinding(String resourceType, String context, java.util.List<Long> policyIds,
+            EvaluationMode evaluationMode) {
         this.resourceType = resourceType;
         this.context = context;
         this.policyIds = policyIds;
@@ -68,11 +72,19 @@ public class PolicyBinding {
         this.policyIds = policyIds;
     }
 
-    public String getEvaluationMode() {
+    public EvaluationMode getEvaluationMode() {
         return evaluationMode;
     }
 
-    public void setEvaluationMode(String evaluationMode) {
+    public void setEvaluationMode(EvaluationMode evaluationMode) {
         this.evaluationMode = evaluationMode;
+    }
+
+    public String getServiceOwner() {
+        return serviceOwner;
+    }
+
+    public void setServiceOwner(String serviceOwner) {
+        this.serviceOwner = serviceOwner;
     }
 }

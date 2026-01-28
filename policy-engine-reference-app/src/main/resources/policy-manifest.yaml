@@ -1,0 +1,61 @@
+apiVersion: "v1"
+service:
+  name: "reference-app-finance"
+  version: "1.0.0"
+  description: "Finance Reference App for Policy Engine"
+
+
+resourceTypes:
+  - name: "order"
+    description: "Financial Order"
+    attributes:
+      - name: "amount"
+        type: "number"
+        required: true
+      - name: "status"
+        type: "string"
+  - name: "invoice"
+    description: "Financial Invoice"
+    attributes:
+      - name: "amount"
+        type: "number"
+      - name: "approved_by"
+        type: "string"
+
+policies:
+  - name: "finance-order-policy"
+    description: "Base policy for finance orders"
+    file: "policies/finance_order.rego"
+    version: "1.0.0"
+  - name: "finance-invoice-policy"
+    description: "Base policy for finance invoices"
+    file: "policies/finance_invoice.rego"
+    version: "1.0.0"
+
+bindings:
+  - name: "finance-order-binding"
+    resourceType: "order"
+    context: "finance"
+    evaluationMode: "ALL_MUST_ALLOW"
+    policies:
+      - "finance-order-policy"
+  - name: "finance-invoice-binding"
+    resourceType: "invoice"
+    context: "invoice-context"
+    evaluationMode: "ALL_MUST_ALLOW"
+    policies:
+      - "finance-invoice-policy"
+
+bundles:
+  - name: "finance-bundle"
+    targetService: "reference-app-finance"
+    refreshInterval: "60s"
+    contexts:
+      - "finance"
+      - "invoice-context"
+  - name: "shared-audit-bundle"
+    targetService: "reference-app-finance" # Owner
+    refreshInterval: "300s"
+    contexts:
+      - "audit-context" # Assuming bindings exist or will be created for this context
+

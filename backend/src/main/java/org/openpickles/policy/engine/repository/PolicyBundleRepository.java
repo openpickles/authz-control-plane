@@ -12,4 +12,6 @@ public interface PolicyBundleRepository extends JpaRepository<PolicyBundle, Long
     java.util.Optional<PolicyBundle> findByName(String name);
 
     java.util.List<PolicyBundle> findByBindingIdsContaining(Long bindingId);
+
+    java.util.Optional<PolicyBundle> findByNameAndServiceOwner(String name, String serviceOwner);
 }

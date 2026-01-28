@@ -5,14 +5,16 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "policies")
+@Table(name = "policies", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "name", "serviceOwner", "origin" })
+})
 public class Policy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String name;
 
     @Lob
@@ -36,16 +38,27 @@ public class Policy {
     private String gitPath;
     private LocalDateTime lastSyncTime;
     private String syncStatus; // SUCCESS, FAILED
-    
+
     @Column(length = 1000)
     private String description;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String filename; // e.g., "authz.rego"
 
     public enum SourceType {
         MANUAL, GIT
     }
+
+    public enum PolicyOrigin {
+        PRODUCT, CUSTOM
+    }
+
+    @Enumerated(EnumType.STRING)
+    private PolicyOrigin origin = PolicyOrigin.CUSTOM;
+
+    private String serviceOwner;
+
+    private Boolean isDirty = false;
 
     public Policy() {
     }
@@ -152,5 +165,29 @@ public class Policy {
 
     public void setFilename(String filename) {
         this.filename = filename;
+    }
+
+    public PolicyOrigin getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(PolicyOrigin origin) {
+        this.origin = origin;
+    }
+
+    public String getServiceOwner() {
+        return serviceOwner;
+    }
+
+    public void setServiceOwner(String serviceOwner) {
+        this.serviceOwner = serviceOwner;
+    }
+
+    public Boolean getIsDirty() {
+        return isDirty;
+    }
+
+    public void setIsDirty(Boolean isDirty) {
+        this.isDirty = isDirty;
     }
 }

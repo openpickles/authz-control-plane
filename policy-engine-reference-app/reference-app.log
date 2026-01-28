@@ -1,0 +1,102 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/Users/mb/.sdkman/candidates/maven/current/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------< org.openpickles:policy-engine-reference-app >-------------
+[INFO] Building policy-engine-reference-app 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ policy-engine-reference-app ---
+[INFO] Deleting /Users/mb/workspace/policy-engine/policy-engine-reference-app/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ policy-engine-reference-app ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- policy-engine:1.0-SNAPSHOT:validate (default) @ policy-engine-reference-app ---
+[INFO] Validating policy manifest: /Users/mb/workspace/policy-engine/policy-engine-reference-app/src/main/resources/policy-manifest.yaml
+[INFO] Verified policy file exists: policies/finance_order.rego
+[INFO] Verified policy file exists: policies/finance_invoice.rego
+[INFO] Manifest validation successful.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ policy-engine-reference-app ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 3 source files with javac [debug parameters release 17] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ policy-engine-reference-app ---
+[INFO] skip non existing resourceDirectory /Users/mb/workspace/policy-engine/policy-engine-reference-app/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ policy-engine-reference-app ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ policy-engine-reference-app ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ policy-engine-reference-app ---
+[INFO] Building jar: /Users/mb/workspace/policy-engine/policy-engine-reference-app/target/policy-engine-reference-app-0.0.1-SNAPSHOT.jar
+[INFO] 
+[INFO] --- spring-boot:3.3.0:repackage (repackage) @ policy-engine-reference-app ---
+[INFO] Replacing main artifact /Users/mb/workspace/policy-engine/policy-engine-reference-app/target/policy-engine-reference-app-0.0.1-SNAPSHOT.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to /Users/mb/workspace/policy-engine/policy-engine-reference-app/target/policy-engine-reference-app-0.0.1-SNAPSHOT.jar.original
+[INFO] 
+[INFO] >>> spring-boot:3.3.0:run (default-cli) > test-compile @ policy-engine-reference-app >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ policy-engine-reference-app ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- policy-engine:1.0-SNAPSHOT:validate (default) @ policy-engine-reference-app ---
+[INFO] Validating policy manifest: /Users/mb/workspace/policy-engine/policy-engine-reference-app/src/main/resources/policy-manifest.yaml
+[INFO] Verified policy file exists: policies/finance_order.rego
+[INFO] Verified policy file exists: policies/finance_invoice.rego
+[INFO] Manifest validation successful.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ policy-engine-reference-app ---
+[INFO] Nothing to compile - all classes are up to date.
+[WARNING] Overwriting artifact's file from /Users/mb/workspace/policy-engine/policy-engine-reference-app/target/policy-engine-reference-app-0.0.1-SNAPSHOT.jar to /Users/mb/workspace/policy-engine/policy-engine-reference-app/target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ policy-engine-reference-app ---
+[INFO] skip non existing resourceDirectory /Users/mb/workspace/policy-engine/policy-engine-reference-app/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ policy-engine-reference-app ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:3.3.0:run (default-cli) < test-compile @ policy-engine-reference-app <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.0:run (default-cli) @ policy-engine-reference-app ---
+[INFO] Attaching agents: []
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.0)
+
+2026-01-17T17:04:24.247+05:30  INFO 27809 --- [           main] o.o.p.e.r.ReferenceAppApplication        : Starting ReferenceAppApplication using Java 24.0.1 with PID 27809 (/Users/mb/workspace/policy-engine/policy-engine-reference-app/target/classes started by mb in /Users/mb/workspace/policy-engine/policy-engine-reference-app)
+2026-01-17T17:04:24.248+05:30 DEBUG 27809 --- [           main] o.o.p.e.r.ReferenceAppApplication        : Running with Spring Boot v3.3.0, Spring v6.1.8
+2026-01-17T17:04:24.248+05:30  INFO 27809 --- [           main] o.o.p.e.r.ReferenceAppApplication        : No active profile set, falling back to 1 default profile: "default"
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.apache.tomcat.jni.Library in an unnamed module (file:/Users/mb/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.24/tomcat-embed-core-10.1.24.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2026-01-17T17:04:24.636+05:30  INFO 27809 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 9090 (http)
+2026-01-17T17:04:24.642+05:30  INFO 27809 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-01-17T17:04:24.642+05:30  INFO 27809 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.24]
+2026-01-17T17:04:24.665+05:30  INFO 27809 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-01-17T17:04:24.665+05:30  INFO 27809 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 397 ms
+2026-01-17T17:04:24.884+05:30  INFO 27809 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 9090 (http) with context path '/'
+2026-01-17T17:04:24.888+05:30  INFO 27809 --- [           main] o.o.p.e.r.ReferenceAppApplication        : Started ReferenceAppApplication in 0.814 seconds (process running for 0.962)
+2026-01-17T17:04:24.889+05:30  INFO 27809 --- [           main] o.o.p.engine.client.PolicyEngineClient   : Bootstrapping Policy Engine Client...
+2026-01-17T17:04:25.337+05:30  INFO 27809 --- [           main] o.o.p.engine.client.PolicyEngineClient   : Successfully synced policy manifest (Hash: 49e18d8e0f24e77417a3a4ad780f0216b594fc3820c199606b9090639e1a42b2)
+2026-01-17T17:04:25.337+05:30  INFO 27809 --- [           main] o.o.p.engine.client.PolicyEngineClient   : Starting Policy Engine Client for bundle: reference-app-bundle
+2026-01-17T17:04:25.337+05:30  INFO 27809 --- [           main] o.o.p.e.c.transport.WebSocketTransport   : Connecting to WebSocket at ws://localhost:8080/ws
+2026-01-17T17:04:25.395+05:30  INFO 27809 --- [lient-AsyncIO-2] o.o.p.e.c.transport.WebSocketTransport   : Connected to Policy Engine Control Plane
+2026-01-17T17:04:25.395+05:30  INFO 27809 --- [           main] o.o.p.e.c.transport.WebSocketTransport   : Subscribing to /topic/bundles/reference-app-bundle
+2026-01-17T17:27:53.232+05:30  WARN 27809 --- [ionShutdownHook] o.s.b.f.support.DisposableBeanAdapter    : Custom destroy method 'stop' on bean with name 'policyEngineClient' propagated an exception: java.lang.IllegalStateException: Connection closed

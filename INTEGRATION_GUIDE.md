@@ -1,198 +1,84 @@
-# Resource Provider Integration Guide
+# Policy Engine Integration Guide
 
-This document outlines the requirements for integrating a microservice (Resource Provider) with the Policy Engine. Integration involves two parts:
-1.  **Control Plane Integration**: Exposing metadata so the Policy Engine UI can manage rules.
-2.  **Data Plane Integration**: Downloading and enforcing policy bundles.
-
----
-
-## Part 1: Control Plane Integration
-
-To allow admins to create Entitlements and Policies for your service, you must expose endpoints that the Policy Engine can query.
-
-### 1.1 Action Metadata Endpoint
-**Method**: `GET`
-**Path**: `/metadata` (or configured path)
-**Purpose**: Tells the Policy Engine what actions are supported by your resources (e.g., `view`, `approve`).
-
-**Response Format**:
-```json
-{
-  "resourceType": "loan-service:loan",
-  "actions": ["view", "create", "approve", "reject", "delete"]
-}
-```
-
-### 1.2 Filter Schema Endpoint
-**Method**: `GET`
-**Path**: `/schema`
-**Purpose**: Tells the Policy Engine how to filter your resources in the UI.
-
-**Response Format**:
-```json
-{
-  "filters": [
-    {
-      "key": "status",
-      "label": "Loan Status",
-      "type": "select",
-      "options": [
-        { "label": "Active", "value": "ACTIVE" },
-        { "label": "Closed", "value": "CLOSED" }
-      ]
-    },
-    {
-      "key": "minAmount",
-      "label": "Minimum Amount",
-      "type": "number"
-    }
-  ]
-}
-```
-
-### 1.3 Resource Search Endpoint
-**Method**: `GET`
-**Path**: `/resources`
-**Purpose**: Returns resources matching the user's filter criteria.
-
-**Request Example**: `GET /resources?status=ACTIVE&minAmount=5000`
-
-**Response Format**:
-```json
-[
-  { "id": "L-101", "name": "Home Loan - Alice" },
-  { "id": "L-102", "name": "Car Loan - Bob" }
-]
-```
+This guide details how to integrate microservices with the Policy Engine Control Plane. The platform supports two primary workflows:
+1.  **Distributed Bootstrapping (Code-First)**: Teams define policies alongside their service code and bootstrap the Control Plane.
+2.  **Centralized Management (UI-First)**: Policies are created and managed directly in the Control Plane.
 
 ---
 
-## Part 2: Data Plane Integration (Enforcement)
+## 1. Distributed Bootstrapping (Code-First)
 
-Your service is responsible for enforcing policies locally. You should not call the Policy Engine for every request.
+In this model, policies are treated as code. They are version-controlled, tested, and deployed along with the microservice. Upon startup, the service "bootstraps" the Control Plane with its definitions.
 
-### 2.1 Downloading the Bundle
-The bundle is a GZIP-compressed TAR file (`.tar.gz`) containing:
+### Advantages
+- **Independence**: Teams own their default policies.
+- **GitOps**: Policy versioning follows service versioning.
+- **Consistency**: The Control Plane is always in sync with the deployed service.
+- **Governance**: The Control Plane allows security teams to **override** these product policies without changing the service code.
 
-1.  `data.json`: A JSON file containing all entitlement data and binding configurations.
-2.  `policies/`: A directory containing all Rego policy files.
-    *   Filenames correspond to the `filename` metadata set in the policy editor (e.g., `authz.rego`).
-    *   If no filename is set, it defaults to `{policyName}.rego`.
+### Step 1: Define `policy-manifest.yaml`
 
-### Bundle Structure Example
-```
-bundle.tar.gz
-├── data.json
-└── policies
-    ├── base.rego
-    └── common.rego
-```
-**Endpoint**: `GET /api/v1/bundles/download`
-**Query Parameters**:
-*   `resourceTypes`: (Optional) Comma-separated list of resource types (e.g., `loan-service:loan`).
-**Format**: `.tar.gz` (Gzipped Tarball)
+Create a `policy-manifest.yaml` in your service's resources directory (`src/main/resources`). This file defines your service identity, resource types, policies, bindings, and bundles.
 
-**Example**:
-```bash
-curl "http://policy-engine/api/v1/bundles/download?resourceTypes=loan-service:loan" -o bundle.tar.gz
-```
+```yaml
+apiVersion: "v1"
+service:
+  name: "my-payment-service"
+  version: "2.1.0"
+  description: "Handles payment processing"
+  # Optional: Public Key for verification
+  publicKey: "..."
 
-**Bundle Contents**:
-*   `/policies/*.rego`: Individual policy files (OPA compatible).
-*   `/data.json`: Aggregated bindings and entitlements.
+# Define the resources your service protects
+resourceTypes:
+  - name: "payment_transaction"
+    description: "A financial transaction"
+    attributes:
+      - name: "amount"
+        type: "number"
 
-### 2.2 Using OPA (Open Policy Agent)
-We recommend running OPA as a sidecar or library.
+# Define your default policies (Product Policies)
+policies:
+  - name: "base-payment-policy"
+    description: "Default rules for payments"
+    file: "policies/payment.rego" # Path relative to classpath
+    version: "1.0.0"
 
-1.  **Startup**: Download the bundle from Policy Engine.
-2.  **Load**: Load the `.rego` files and `data.json` into OPA.
-3.  **Enforce**: On every request, query OPA.
+# Define how policies apply to resources (Bindings)
+bindings:
+  - name: "payment-protection"
+    resourceType: "payment_transaction"
+    context: "payments"
+    evaluationMode: "ALL_MUST_ALLOW" # Options: ALL_MUST_ALLOW, ANY_ALLOW, DENY_OVERRIDES
+    policies:
+      - "base-payment-policy"
 
-**Example OPA Query**:
-```rego
-# Input
-{
-  "user": "alice",
-  "action": "approve",
-  "resource": "L-101"
-}
-
-# Policy Logic (Simplified)
-allow {
-  # Check if user has entitlement
-  some entitlement
-  entitlement = data.entitlements[_]
-  entitlement.subject.id == input.user
-  entitlement.resourceIds[_] == input.resource
-  entitlement.actions[_] == input.action
-  
-  # Check if policy allows (e.g. time of day)
-  # ...
-}
+# Define the Bundle (The unit of distribution)
+bundles:
+  - name: "payment-bundle"
+    targetService: "my-payment-service"
+    refreshInterval: "60s"
+    contexts:
+      - "payments"
 ```
 
-### 2.3 Periodic Sync
-Your service (or sidecar) should poll the download endpoint periodically (e.g., every 5 minutes) to fetch updates. Use `If-Modified-Since` or ETags if supported to reduce bandwidth.
+#### Manifest Reference
 
----
+| Field | Description |
+| :--- | :--- |
+| **`service`** | Identity of the service. `name` must be unique. |
+| **`resourceTypes`** | Definitions of resources protected by this service. Used for UI autocomplete. |
+| **`policies`** | List of Rego policies. `file` is the classpath location. |
+| **`bindings`** | Links policies to resources + contexts. |
+| `bindings.evaluationMode` | Strategy for combining policies: `ALL_MUST_ALLOW` (Unanimous), `ANY_ALLOW` (One permits), `DENY_OVERRIDES` (Deny trumps Allow). |
+| **`bundles`** | Grouping of contexts. This is what the client downloads. |
+| `bundles.refreshInterval` | Suggestion to client on how often to check for updates (if polling). |
 
-## Part 3: Policy Management (GitOps)
+### Step 2: Integrate the Client Library
 
-For teams preferring a **GitOps** workflow, policies can be managed in a version control system (e.g., GitHub, GitLab) instead of the UI.
-1.  **Store Policies**: Maintain `.rego` files in a Git repository.
-2.  **Configure Sync**: In the Policy Engine UI, create a Policy and select **Git Repository** as the source.
-3.  **Sync**: Trigger a sync via UI or API (`POST /api/v1/policies/{id}/sync`) to update the Policy Engine's copy.
-4.  **Distribution**: The Policy Engine continues to serve the bundled policies to the Data Plane (Resource Providers) as described in Part 2.
+Add the `policy-engine-client` dependency to your project.
 
----
-
-## Part 4: Entitlement Synchronization
-
-If your service owns the source of truth for some entitlements (e.g., "User Alice is an owner of Loan L-101"), you should purely **push** this state to the Policy Engine.
-
-### 4.1 Batch Upsert Endpoint
-**Method**: `POST`
-**Path**: `/api/v1/entitlements/sync`
-**Purpose**: Update or create entitlements in bulk. This operation is **idempotent**—it finds existing entitlements by `(Subject, ResourceType)` and updates them, or creates new ones if missing.
-
-**Request Body**:
-```json
-[
-  {
-    "resourceType": "loan-service:loan",
-    "resourceIds": ["L-101", "L-102"],
-    "subjectType": "USER",
-    "subjectId": "alice",
-    "actions": ["VIEW", "APPROVE"],
-    "effect": "ALLOW"
-  },
-  {
-    "resourceType": "loan-service:loan",
-    "resourceIds": ["L-103"],
-    "subjectType": "USER",
-    "subjectId": "bob",
-    "actions": ["VIEW"],
-    "effect": "ALLOW"
-  }
-]
-```
-
-**Best Practices**:
-*   **Trigger on Change**: Call this API whenever resource ownership/permissions change in your service.
-*   **Periodic Reconciliation**: Optionally run a nightly job to push the full state to ensure consistency.
-
-
----
-
-## Part 5: Real-time Updates & Client SDK
-
-To get instant policy updates without polling, you can use **WebSockets** (default), **Kafka**, or **RabbitMQ**.
-
-### 5.1 Using the Java Client SDK
-
-The easiest way to integrate is using our provided Java Client Library. It abstracts away the transport layer.
-
-**Maven Dependency**:
+**Java (Maven):**
 ```xml
 <dependency>
     <groupId>org.openpickles</groupId>
@@ -201,56 +87,83 @@ The easiest way to integrate is using our provided Java Client Library. It abstr
 </dependency>
 ```
 
-**Initialization (WebSocket)**:
+### Step 3: Initialize the Client
+
+Configure and start the client on application startup using the `ClientConfig.Builder`.
+
 ```java
-ClientConfig config = ClientConfig.builder()
-    .controlPlaneUrl("ws://policy-engine-host:8080/ws")
-    .bundleName("my-service-bundle")
-    .build();
+import org.openpickles.policy.engine.client.PolicyEngineClient;
+import org.openpickles.policy.engine.client.ClientConfig;
 
-PolicyEngineClient client = new PolicyEngineClient(config);
-client.start();
-```
+@Configuration
+public class PolicyConfig {
 
-**Initialization (Kafka)**:
-```java
-ClientConfig config = ClientConfig.builder()
-    .transportType("KAFKA")
-    .kafkaBootstrapServers("localhost:9092")
-    .bundleName("my-service-bundle") // Listens to topic 'policy-updates'
-    .build();
-
-PolicyEngineClient client = new PolicyEngineClient(config);
-client.start();
-```
-
-### 5.2 Raw Integration (Non-Java)
-
-If you are not using Java, you can listen directly to the message broker.
-
-**Event Format (CloudEvents JSON)**:
-All updates are broadcast as **CloudEvents**.
-```json
-{
-  "specversion": "1.0",
-  "type": "org.openpickles.policy.bundle.update",
-  "source": "/policy-engine/control-plane",
-  "id": "event-uuid-1234",
-  "time": "2023-10-27T10:00:00Z",
-  "datacontenttype": "application/json",
-  "data": {
-    "bundleName": "my-service-bundle",
-    "version": "v1.5.0",
-    "downloadUrl": "http://policy-engine-host/api/v1/bundles/download?..."
-  }
+    @Bean(destroyMethod = "stop")
+    public PolicyEngineClient policyClient() {
+        ClientConfig config = ClientConfig.builder()
+            .controlPlaneUrl("http://policy-engine:8080")
+            .manifestPath("classpath:policy-manifest.yaml")
+            .bundleName("payment-bundle") // Must match manifest
+            .authHeader("Basic YWRtaW46YWRtaW4xMjM=") // Base64(admin:admin123)
+            .transportType("WEBSOCKET") // or KAFKA, RABBITMQ
+            .failFast(false) // Don't crash app if Control Plane is down
+            .retryInitialInterval(2000)
+            .build();
+        
+        PolicyEngineClient client = new PolicyEngineClient(config);
+        
+        // 1. Bootstrap: Sync manifest to Control Plane
+        client.bootstrap(); 
+        
+        // 2. Start: Connect to WebSocket/Kafka for updates
+        client.start();
+        
+        return client;
+    }
 }
 ```
 
-**Kafka**:
-- Default Topic: `policy-updates`
-- Key: Event ID
-- Value: CloudEvent JSON
+---
 
-**RabbitMQ**:
-- Default Exchange: `policy.updates` (Fanout)
-- Bind a temporary queue to this exchange.
+## 2. Centralized Management (UI-First)
+
+For ad-hoc policies, prototyping, or organization-wide governance rules, you can create policies directly in the Control Plane.
+
+### Workflow
+1.  **Access the Dashboard**: Navigate to `Policy Editor`.
+2.  **Create Policy**: Write Rego code or upload a file.
+    - Set Origin to **CUSTOM** (Administrative Override) or **PRODUCT**.
+3.  **Define Binding**: Go to `Policy Bindings` and create a binding.
+    - Select Resource Type (e.g., `payment_transaction`).
+    - Select Context (e.g., `payments`).
+    - Attach the Policy.
+4.  **Manage Bundle**: Go to `Policy Bundles` and ensure the Bundle includes the Context (e.g., `payments`).
+
+The connected services will automatically receive the update via WebSocket/Kafka without restarting.
+
+### Policy Layering (Overrides)
+One of the most powerful features of the Control Plane is the ability to override "Product" policies defined by teams.
+
+- **Product Policy**: Defined in `policy-manifest.yaml`. Read-only in UI (typically).
+- **Custom Policy**: Defined in Control Plane with same name + service owner.
+- **Resolution**: The Control Plane merges them. Custom policies take precedence or can evaluate in a chain depending on the binding mode.
+
+---
+
+## 3. Distributed Architecture
+
+The Policy Engine supports a **Federated** model where services can "own" bundles and "subscribe" to others.
+
+### Concepts
+- **Owner**: The service that defines the Bundle in its manifest.
+- **Subscriber**: Any service that lists the Bundle in `subscribedBundles` (implicit in manifest via dependencies) or configured in the UI.
+
+### Composite Bundles
+When a service client requests a download (e.g., `payment-bundle`), the Control Plane performs a **Composite Build**:
+1.  Identify the primary bundle.
+2.  Identify all other bundles the service is subscribed to (e.g., `shared-audit-bundle`, `corporate-compliance-bundle`).
+3.  Merge all bindings and policies.
+4.  Generate a single WASM or Rego bundle for the client.
+5.  Push the update to the client.
+
+This allows a microservice to be secure by default (Product Policies) while enforcing global compliance (Shared Bundles) automatically.

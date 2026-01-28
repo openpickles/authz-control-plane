@@ -101,6 +101,9 @@ const DualRailSidebar = () => {
                                 <NavLink to="/resource-types" className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus-ring-dark ${isActive ? 'bg-slate-800 text-indigo-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
                                     <Server size={18} /> Resource Types
                                 </NavLink>
+                                <NavLink to="/services" className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus-ring-dark ${isActive ? 'bg-slate-800 text-indigo-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                                    <Package size={18} /> Services
+                                </NavLink>
                             </div>
                         </div>
 

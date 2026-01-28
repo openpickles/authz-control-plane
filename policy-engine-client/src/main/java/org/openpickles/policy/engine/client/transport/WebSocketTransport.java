@@ -33,18 +33,23 @@ public class WebSocketTransport implements NotificationTransport {
     }
 
     @Override
-    public void connect() {
-        try {
-            log.info("Connecting to WebSocket at {}", serverUrl);
-            this.session = stompClient.connect(serverUrl, new StompSessionHandlerAdapter() {
-                @Override
-                public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-                    log.info("Connected to Policy Engine Control Plane");
-                }
-            }).get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to connect to WebSocket", e);
-        }
+    public void connect() throws Exception {
+        log.info("Connecting to WebSocket at {}", serverUrl);
+        // We block here intentionally to ensure connection is established before
+        // proceeding
+        // but we propagate the exception so the caller can retry.
+        this.session = stompClient.connect(serverUrl, new StompSessionHandlerAdapter() {
+            @Override
+            public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
+                log.info("Connected to Policy Engine Control Plane. Session ID: {}", session.getSessionId());
+            }
+
+            @Override
+            public void handleTransportError(StompSession session, Throwable exception) {
+                log.error("WebSocket Transport Error", exception);
+                // In a real scenario, we might want to trigger a reconnect callback here
+            }
+        }).get(); // This will throw ExecutionException if connection fails
     }
 
     @Override

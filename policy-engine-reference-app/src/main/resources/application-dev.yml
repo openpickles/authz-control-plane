@@ -1,0 +1,9 @@
+policy-engine:
+  server:
+    url: http://localhost:8080
+  client:
+    service-name: reference-app-finance
+    manifest-path: classpath:policy-manifest.yaml
+    sync-enabled: true
+    pull-enabled: true
+    pull-interval-seconds: 10 # Faster updates in dev

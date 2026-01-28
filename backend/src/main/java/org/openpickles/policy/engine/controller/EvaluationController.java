@@ -82,4 +82,47 @@ public class EvaluationController {
             this.data = data;
         }
     }
+
+    @PostMapping("/evaluate")
+    public ResponseEntity<Map<String, Object>> evaluate(@RequestBody EvaluationRequest request) {
+        try {
+            Map<String, Object> result = evaluationService.evaluate(
+                    request.getResourceType(),
+                    request.getContext(),
+                    request.getInput());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    public static class EvaluationRequest {
+        private String resourceType;
+        private String context;
+        private Map<String, Object> input;
+
+        public String getResourceType() {
+            return resourceType;
+        }
+
+        public void setResourceType(String resourceType) {
+            this.resourceType = resourceType;
+        }
+
+        public String getContext() {
+            return context;
+        }
+
+        public void setContext(String context) {
+            this.context = context;
+        }
+
+        public Map<String, Object> getInput() {
+            return input;
+        }
+
+        public void setInput(Map<String, Object> input) {
+            this.input = input;
+        }
+    }
 }

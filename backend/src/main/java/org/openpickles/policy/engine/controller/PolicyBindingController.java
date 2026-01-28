@@ -28,13 +28,25 @@ public class PolicyBindingController {
     public org.springframework.data.domain.Page<PolicyBinding> getAllBindings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search) {
-        logger.debug("Fetching bindings, page: {}, size: {}, search: {}", page, size, search);
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String service) {
+        logger.debug("Fetching bindings, page: {}, size: {}, search: {}, service: {}", page, size, search, service);
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
-        if (search != null && !search.trim().isEmpty()) {
-            return repository.findByResourceTypeContainingIgnoreCase(search.trim(), pageable);
+
+        PolicyBinding probe = new PolicyBinding();
+        if (service != null && !service.isEmpty()) {
+            probe.setServiceOwner(service);
         }
-        return repository.findAll(pageable);
+        if (search != null && !search.trim().isEmpty()) {
+            probe.setResourceType(search.trim()); // Default search maps to ResourceType? or use Example
+        }
+
+        org.springframework.data.domain.ExampleMatcher matcher = org.springframework.data.domain.ExampleMatcher
+                .matching()
+                .withIgnoreNullValues()
+                .withStringMatcher(org.springframework.data.domain.ExampleMatcher.StringMatcher.CONTAINING);
+
+        return repository.findAll(org.springframework.data.domain.Example.of(probe, matcher), pageable);
     }
 
     @GetMapping("/search")
@@ -54,6 +66,11 @@ public class PolicyBindingController {
         if (policies.size() != new HashSet<>(binding.getPolicyIds()).size()) {
             throw new FunctionalException(
                     "One or more policies not found", "FUNC_010");
+        }
+
+        if (binding.getEvaluationMode() == null) {
+            throw new FunctionalException(
+                    "Evaluation Mode is required", "FUNC_011");
         }
 
         return repository.save(binding);
