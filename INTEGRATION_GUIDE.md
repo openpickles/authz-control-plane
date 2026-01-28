@@ -49,7 +49,7 @@ bindings:
   - name: "payment-protection"
     resourceType: "payment_transaction"
     context: "payments"
-    evaluationMode: "ALL_MUST_ALLOW"
+    evaluationMode: "ALL_MUST_ALLOW" # Options: ALL_MUST_ALLOW, ANY_ALLOW, DENY_OVERRIDES
     policies:
       - "base-payment-policy"
 
@@ -61,6 +61,18 @@ bundles:
     contexts:
       - "payments"
 ```
+
+#### Manifest Reference
+
+| Field | Description |
+| :--- | :--- |
+| **`service`** | Identity of the service. `name` must be unique. |
+| **`resourceTypes`** | Definitions of resources protected by this service. Used for UI autocomplete. |
+| **`policies`** | List of Rego policies. `file` is the classpath location. |
+| **`bindings`** | Links policies to resources + contexts. |
+| `bindings.evaluationMode` | Strategy for combining policies: `ALL_MUST_ALLOW` (Unanimous), `ANY_ALLOW` (One permits), `DENY_OVERRIDES` (Deny trumps Allow). |
+| **`bundles`** | Grouping of contexts. This is what the client downloads. |
+| `bundles.refreshInterval` | Suggestion to client on how often to check for updates (if polling). |
 
 ### Step 2: Integrate the Client Library
 
@@ -77,7 +89,7 @@ Add the `policy-engine-client` dependency to your project.
 
 ### Step 3: Initialize the Client
 
-Configure and start the client on application startup. This will handling the bootstrapping (Sync) and real-time updates.
+Configure and start the client on application startup using the `ClientConfig.Builder`.
 
 ```java
 import org.openpickles.policy.engine.client.PolicyEngineClient;
@@ -88,10 +100,15 @@ public class PolicyConfig {
 
     @Bean(destroyMethod = "stop")
     public PolicyEngineClient policyClient() {
-        ClientConfig config = new ClientConfig();
-        config.setControlPlaneUrl("http://policy-engine:8080");
-        config.setManifestPath("classpath:policy-manifest.yaml");
-        config.setBundleName("payment-bundle"); // Must match manifest
+        ClientConfig config = ClientConfig.builder()
+            .controlPlaneUrl("http://policy-engine:8080")
+            .manifestPath("classpath:policy-manifest.yaml")
+            .bundleName("payment-bundle") // Must match manifest
+            .authHeader("Basic YWRtaW46YWRtaW4xMjM=") // Base64(admin:admin123)
+            .transportType("WEBSOCKET") // or KAFKA, RABBITMQ
+            .failFast(false) // Don't crash app if Control Plane is down
+            .retryInitialInterval(2000)
+            .build();
         
         PolicyEngineClient client = new PolicyEngineClient(config);
         

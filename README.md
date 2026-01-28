@@ -120,21 +120,76 @@ This project includes a GitHub Actions workflow `.github/workflows/quality-check
 - **Backend**: Java 17, Spring Boot 3.3, H2 Database, Spring Security, JPA.
 - **Frontend**: React 18, Vite, TailwindCSS, Lucide Icons.
 
+## Client Configuration
+
+The `policy-engine-client` can be configured via the `ClientConfig` builder key properties:
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `controlPlaneUrl` | String | - | URL of the Policy Engine Control Plane (e.g., `http://localhost:8080`) |
+| `manifestPath` | String | - | Path to `policy-manifest.yaml` (classpath: or file:) |
+| `bundleName` | String | - | Name of the bundle to download (must match manifest) |
+| `authHeader` | String | - | Authorization header value (e.g., `Bearer <token>` or `Basic <cred>`) |
+| `failFast` | boolean | `false` | If true, throws exception if initial connection fails |
+| `retryInitialInterval`| long | `2000` | Initial retry interval in ms |
+| `retryMaxInterval` | long | `60000`| Maximum retry interval in ms |
+| `retryMultiplier` | double | `2.0` | Multiplier for exponential backoff |
+
 ## Real-time Transport Configuration
 
 The Policy Engine supports multiple transport mechanisms for broadcasting policy updates. The default is **WebSocket**, but **Kafka** and **RabbitMQ** are also fully supported.
 
-**Configuration (`application.yml`):**
+### 1. WebSocket (Default)
+Simple, direct connection to the Control Plane. No extra infrastructure required.
 ```yaml
 policy:
   engine:
     transport:
-      type: KAFKA # Options: WEBSOCKET (default), KAFKA, RABBITMQ
-      kafka:
-        topic: policy-updates # Default
-      rabbitmq:
-        exchange: policy.updates # Default
+      type: WEBSOCKET
 ```
+
+### 2. Kafka
+Production-grade durability and scale.
+```yaml
+policy:
+  engine:
+    transport:
+      type: KAFKA
+      kafka:
+        topic: policy-updates
+        bootstrap-servers: localhost:9092 # Set in ClientConfig
+        group-id: my-service-group      # Set in ClientConfig
+```
+
+### 3. RabbitMQ
+Standard AMQP messaging.
+```yaml
+policy:
+  engine:
+    transport:
+      type: RABBITMQ
+      rabbitmq:
+        exchange: policy.updates
+        host: localhost                 # Set in ClientConfig
+        port: 5672                      # Set in ClientConfig
+        username: guest                 # Set in ClientConfig
+        password: guest                 # Set in ClientConfig
+```
+
+## API Overview
+
+The Control Plane exposes a comprehensive REST API for management and integration.
+
+| Category | Endpoint Base | Description |
+| :--- | :--- | :--- |
+| **Evaluation** | `/api/v1/evaluation` | Real-time policy evaluation requests |
+| **Sync** | `/api/v1/sync` | Used by clients to bootstrap definitions (`policy-manifest.yaml`) |
+| **Bundles** | `/api/v1/bundles` | Download policy bundles (WASM/Rego) |
+| **Policies** | `/api/v1/policies` | CRUD operations for OPA policies |
+| **Resources** | `/api/v1/resource-types` | Manage resource type definitions |
+| **Services** | `/api/v1/services` | Registry of connected microservices |
+| **Audit** | `/api/v1/audit` | Access policy evaluation logs |
+
 
 ## Getting Started
 
