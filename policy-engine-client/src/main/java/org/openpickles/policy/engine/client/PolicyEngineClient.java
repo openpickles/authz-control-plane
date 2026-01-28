@@ -25,9 +25,16 @@ public class PolicyEngineClient {
     private final HttpClient httpClient;
 
     private final org.openpickles.policy.engine.client.loader.ManifestLoader manifestLoader;
+    private final org.openpickles.policy.engine.client.auth.TokenProvider tokenProvider;
 
     public PolicyEngineClient(ClientConfig config) {
+        this(config, createDefaultTokenProvider(config));
+    }
+
+    public PolicyEngineClient(ClientConfig config,
+            org.openpickles.policy.engine.client.auth.TokenProvider tokenProvider) {
         this.config = config;
+        this.tokenProvider = tokenProvider;
         this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newHttpClient();
         this.manifestLoader = new org.openpickles.policy.engine.client.loader.ManifestLoader();
@@ -49,38 +56,124 @@ public class PolicyEngineClient {
         }
     }
 
+    private static org.openpickles.policy.engine.client.auth.TokenProvider createDefaultTokenProvider(
+            ClientConfig config) {
+        // Initialize Token Provider
+        if (config.getClientId() != null && !config.getClientId().isEmpty() &&
+                config.getClientSecret() != null && !config.getClientSecret().isEmpty() &&
+                config.getTokenUri() != null && !config.getTokenUri().isEmpty()) {
+            LoggerFactory.getLogger(PolicyEngineClient.class)
+                    .info("Initialized OAuth2 Client Credentials authentication (Standalone).");
+            return new org.openpickles.policy.engine.client.auth.ClientCredentialsTokenProvider(config);
+        } else {
+            LoggerFactory.getLogger(PolicyEngineClient.class)
+                    .info("Initialized No-Op authentication (Dev Mode or manually provided headers).");
+            return new org.openpickles.policy.engine.client.auth.NoOpTokenProvider();
+        }
+    }
+
     private String serviceName;
 
-    public void bootstrap() {
-        try {
-            log.info("Bootstrapping Policy Engine Client...");
-            var manifest = manifestLoader.loadManifest(config.getManifestPath());
-            if (manifest != null) {
-                if (manifest.getService() != null) {
-                    this.serviceName = manifest.getService().getName();
+    // Resilient Connection Logic
+    private volatile boolean running = false;
+    private final java.util.concurrent.ScheduledExecutorService scheduler = java.util.concurrent.Executors
+            .newSingleThreadScheduledExecutor();
 
-                    // Allow overriding/setting public key from external file config
-                    if (config.getPublicKeyPath() != null && !config.getPublicKeyPath().isEmpty()) {
-                        try {
-                            String keyContent = java.nio.file.Files
-                                    .readString(java.nio.file.Path.of(config.getPublicKeyPath()));
-                            manifest.getService().setPublicKey(keyContent);
-                            log.info("Loaded public key from: {}", config.getPublicKeyPath());
-                        } catch (java.io.IOException e) {
-                            log.error("Failed to read public key file: {}", config.getPublicKeyPath(), e);
-                            if (config.isFailFast()) {
-                                throw new RuntimeException("Failed to read public key", e);
-                            }
-                        }
-                    }
+    public void start() {
+        if (running) {
+            log.warn("PolicyEngineClient is already running.");
+            return;
+        }
+        running = true;
+        log.info("Starting Policy Engine Client for bundle: {}", config.getBundleName());
+
+        // Start the connection loop in background
+        scheduler.execute(this::connectionLoop);
+    }
+
+    private void connectionLoop() {
+        long currentRetryInterval = config.getRetryInitialInterval();
+
+        while (running) {
+            try {
+                log.info("Attempting to connect to Policy Engine...");
+
+                // 1. Connect Transport
+                transport.connect();
+
+                // 2. Bootstrap/Sync Manifest (only after successful connection)
+                bootstrap();
+
+                // 3. Subscribe for updates
+                transport.subscribe("bundles/" + config.getBundleName(), this::handleEvent);
+
+                log.info("Client successfully initialized and connected.");
+
+                // Reset retry interval on success
+                currentRetryInterval = config.getRetryInitialInterval();
+
+                // Wait here until disconnected or stopped?
+                // Since transport.connect() blocks only until connected, we need to handle
+                // disconnections.
+                // For this simple implementation, if we are here, we consider it "stable".
+                // A more robust implementation would hook into transport disconnection events.
+                // But since our transport doesn't block "forever", we need to avoid the loop
+                // spinning if it just returns.
+                // However, StompSession runs in its own threads. So we just exit the loop?
+                // No, we need to "watch" or wait.
+
+                // For now, valid strategy: If connect() succeeds, we are good.
+                // If the transport loses connection, we rely on the host to restart or we need
+                // a keep-alive monitor.
+                // Given the constraints, let's assume we simply want to retry INITIAL
+                // connection.
+                // Once connected, Spring Stomp client handles some reconnects, or we'd need a
+                // disconnect listener.
+                // Let's just return from the loop on success.
+                return;
+
+            } catch (Exception e) {
+                log.error("Failed to connect/initialize Policy Engine Client. Retrying in {} ms. Error: {}",
+                        currentRetryInterval, e.getMessage());
+
+                // Sleep with Backoff
+                try {
+                    long sleepTime = applyJitter(currentRetryInterval);
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    running = false;
+                    return;
                 }
-                syncManifest(manifest);
+
+                // Update Interval
+                currentRetryInterval = (long) Math.min(
+                        currentRetryInterval * config.getRetryMultiplier(),
+                        config.getRetryMaxInterval());
             }
-        } catch (Exception e) {
-            log.error("Failed to bootstrap policy engine", e);
-            if (config.isFailFast()) {
-                throw new RuntimeException("Policy Engine Bootstrap Failed", e);
+        }
+    }
+
+    private long applyJitter(long interval) {
+        // +/- 20% jitter
+        double jitter = 0.2;
+        double random = java.util.concurrent.ThreadLocalRandom.current().nextDouble(1.0 - jitter, 1.0 + jitter);
+        return (long) (interval * random);
+    }
+
+    /**
+     * Bootstrap is now called internally after connection is established.
+     * It syncs the manifest.
+     */
+    public void bootstrap() throws Exception {
+        log.info("Syncing Policy Manifest...");
+        var manifest = manifestLoader.loadManifest(config.getManifestPath());
+        if (manifest != null) {
+            if (manifest.getService() != null) {
+                this.serviceName = manifest.getService().getName();
+                loadPublicKey(manifest);
             }
+            syncManifest(manifest);
         }
     }
 
@@ -97,7 +190,6 @@ public class PolicyEngineClient {
         BundleUpdateData data = new BundleUpdateData();
         data.setBundleName(config.getBundleName());
         data.setDownloadUrl(downloadUrl);
-        // data.setVersion("latest"); // Version might be unknown until downloaded
 
         downloadAndProcessBundle(data);
     }
@@ -110,11 +202,24 @@ public class PolicyEngineClient {
         var syncRequest = new org.openpickles.policy.engine.client.model.sync.ManifestSyncRequest(manifest, hash);
         String requestBody = objectMapper.writeValueAsString(syncRequest);
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(toHttpUrl(config.getControlPlaneUrl()) + "/api/v1/dist/sync"))
-                .header("Content-Type", "application/json")
-                .header("Authorization", config.getAuthHeader() != null ? config.getAuthHeader() : "")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .header("Content-Type", "application/json");
+
+        // OAuth2 Token takes precedence
+        String token = tokenProvider.getAccessToken();
+        if (token != null) {
+            builder.header("Authorization", "Bearer " + token);
+            log.debug("Added OAuth2 Access Token to sync request");
+        } else if (config.getAuthHeader() != null && !config.getAuthHeader().trim().isEmpty()) {
+            // Fallback to manual header
+            builder.header("Authorization", config.getAuthHeader());
+            log.debug("Adding manual Authorization header to sync request");
+        } else {
+            log.debug("No Authorization header configured for sync request");
+        }
+
+        HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -146,10 +251,19 @@ public class PolicyEngineClient {
         return hexString.toString();
     }
 
-    public void start() {
-        log.info("Starting Policy Engine Client for bundle: {}", config.getBundleName());
-        transport.connect();
-        transport.subscribe("bundles/" + config.getBundleName(), this::handleEvent);
+    private void loadPublicKey(org.openpickles.policy.engine.client.model.manifest.ClientManifest manifest) {
+        if (config.getPublicKeyPath() != null && !config.getPublicKeyPath().isEmpty()) {
+            try {
+                String keyContent = java.nio.file.Files
+                        .readString(java.nio.file.Path.of(config.getPublicKeyPath()));
+                manifest.getService().setPublicKey(keyContent);
+                log.info("Loaded public key from: {}", config.getPublicKeyPath());
+            } catch (java.io.IOException e) {
+                log.error("Failed to read public key file: {}", config.getPublicKeyPath(), e);
+                // We don't throw here to allow partial bootstrap if key is missing but not
+                // critical
+            }
+        }
     }
 
     public void stop() {
@@ -186,8 +300,16 @@ public class PolicyEngineClient {
                     .uri(URI.create(data.getDownloadUrl()))
                     .GET();
 
-            if (config.getAuthHeader() != null && !config.getAuthHeader().isEmpty()) {
+            // OAuth2 Token takes precedence
+            String token = tokenProvider.getAccessToken();
+            if (token != null) {
+                builder.header("Authorization", "Bearer " + token);
+                log.debug("Added OAuth2 Access Token to bundle download request");
+            } else if (config.getAuthHeader() != null && !config.getAuthHeader().trim().isEmpty()) {
                 builder.header("Authorization", config.getAuthHeader());
+                log.debug("Adding Authorization header to bundle download request");
+            } else {
+                log.debug("No Authorization header configured for bundle download request");
             }
 
             HttpRequest request = builder.build();

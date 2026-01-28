@@ -7,8 +7,13 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 
 # Copy the pre-built JAR file
-ARG JAR_FILE=target/*.jar
-COPY ${JAR_FILE} app.jar
+# Copy the pre-built JAR files from the staged build context
+COPY app.jar app.jar
+COPY reference-app.jar reference-app.jar
+
+# Copy and setup startup script
+COPY start_both.sh start_both.sh
+RUN chmod +x start_both.sh
 
 # Install OPA
 ADD https://openpolicyagent.org/downloads/v0.60.0/opa_linux_amd64_static /app/opa
@@ -19,7 +24,11 @@ RUN chown -R spring:spring /app
 
 USER spring:spring
 
-# Expose port (Cloud Run defaults to 8080)
-EXPOSE 8080
+ENV SPRING_PROFILES_ACTIVE=dev
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Expose ports
+# 8080: Control Plane
+# 9090: Reference App
+EXPOSE 8080 9090
+
+ENTRYPOINT ["./start_both.sh"]

@@ -18,7 +18,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,7 +49,8 @@ public class EntitlementSyncIntegrationTest {
                 e1.setEffect(Entitlement.Effect.ALLOW);
 
                 mockMvc.perform(post("/api/v1/entitlements/sync")
-                                .with(user("admin").roles("ADMIN"))
+                                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                                                new SimpleGrantedAuthority("ROLE_ADMIN")))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(new ObjectMapper().writeValueAsString(List.of(e1))))
                                 .andExpect(status().isOk());
@@ -70,7 +72,8 @@ public class EntitlementSyncIntegrationTest {
                 e1Update.setEffect(Entitlement.Effect.ALLOW);
 
                 mockMvc.perform(post("/api/v1/entitlements/sync")
-                                .with(user("admin").roles("ADMIN"))
+                                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                                                new SimpleGrantedAuthority("ROLE_ADMIN")))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(new ObjectMapper().writeValueAsString(List.of(e1Update))))
                                 .andExpect(status().isOk());

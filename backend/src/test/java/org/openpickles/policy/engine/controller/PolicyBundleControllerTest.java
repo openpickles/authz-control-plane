@@ -16,7 +16,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -57,7 +58,8 @@ public class PolicyBundleControllerTest {
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(bundle);
 
         mockMvc.perform(post(API_BUNDLES)
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
                 .andExpect(status().isOk())
@@ -74,7 +76,8 @@ public class PolicyBundleControllerTest {
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(bundle);
 
         mockMvc.perform(post(API_BUNDLES)
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
                 .andExpect(status().isBadRequest())
@@ -90,7 +93,8 @@ public class PolicyBundleControllerTest {
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(bundle);
 
         mockMvc.perform(post(API_BUNDLES)
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
                 .andExpect(status().isBadRequest())
@@ -111,7 +115,8 @@ public class PolicyBundleControllerTest {
         bundleRepository.save(b2);
 
         mockMvc.perform(get(API_BUNDLES)
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE)))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(2))));
     }
@@ -124,7 +129,8 @@ public class PolicyBundleControllerTest {
         bundleRepository.save(b1);
 
         mockMvc.perform(get(API_BUNDLES)
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .param("search", "alpha"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].name", is("alpha-bundle")));
@@ -138,7 +144,8 @@ public class PolicyBundleControllerTest {
         bundleRepository.save(b1);
 
         mockMvc.perform(post(API_BUNDLES + "/buildable-bundle/build")
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE)))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Build triggered")));
     }
@@ -154,7 +161,8 @@ public class PolicyBundleControllerTest {
         // tests),
         // just the controller mapping and basic response
         mockMvc.perform(get(API_BUNDLES + "/download-me/download")
-                .with(user(ADMIN_USER).roles(ADMIN_ROLE))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .param("service", SERVICE_NAME))
                 .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk())

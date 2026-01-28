@@ -8,7 +8,7 @@ echo "Setting up development environment..."
 # 1. Start Backend
 echo "Starting Backend..."
 cd "$ROOT_DIR/backend" || exit
-nohup mvn clean package spring-boot:run -DskipTests > backend.log 2>&1 &
+nohup mvn clean package spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests > backend.log 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > "$ROOT_DIR/backend.pid"
 echo "Backend started with PID $BACKEND_PID. Logs: backend/backend.log"
@@ -41,7 +41,7 @@ echo "Backend is up!"
 # 3. Start Reference App
 echo "Starting Reference App..."
 cd "$ROOT_DIR/policy-engine-reference-app" || exit
-nohup mvn clean package spring-boot:run > reference-app.log 2>&1 &
+nohup mvn clean package spring-boot:run -Dspring-boot.run.profiles=dev > reference-app.log 2>&1 &
 REF_APP_PID=$!
 echo $REF_APP_PID > "$ROOT_DIR/reference-app.pid"
 echo "Reference App started with PID $REF_APP_PID. Logs: policy-engine-reference-app/reference-app.log"

@@ -5,9 +5,30 @@ logging:
   level:
     org.openpickles: DEBUG
 
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          policy-engine:
+            authorization-grant-type: client_credentials
+            client-id: dev-client
+            client-secret: dev-secret
+            scope: policy.register
+        provider:
+          policy-engine:
+            # Pointing to a non-existent endpoint for now, or the backend if it mocked it. 
+            # In dev mode with the backend relaxed, this might fail to fetch a token 
+            # if the backend doesn't actually host a token endpoint. 
+            # However, this fixes the "Bean not found" startup error.
+            token-uri: http://localhost:8080/oauth2/token
+
 policy-engine:
+  security:
+    enabled: false
   server:
-    url: http://localhost:8080
+    url: https://openpickles-789699736924.us-central1.run.app 
+    #http://localhost:8080
   client:
     service-name: reference-app-finance
     manifest-path: classpath:policy-manifest.yaml

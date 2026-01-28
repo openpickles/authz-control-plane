@@ -15,7 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -65,7 +66,8 @@ public class PolicyBundleDownloadIntegrationTest {
     @Test
     public void testDownloadBundle_ByResourceType_Success() throws Exception {
         mockMvc.perform(get("/api/v1/bundles/download")
-                .with(user("admin").roles("ADMIN"))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .param("resourceTypes", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/gzip"))
@@ -77,7 +79,8 @@ public class PolicyBundleDownloadIntegrationTest {
     @Test
     public void testDownloadBundle_All_Success() throws Exception {
         mockMvc.perform(get("/api/v1/bundles/download") // No params
-                .with(user("admin").roles("ADMIN")))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/gzip"));
     }
@@ -98,7 +101,8 @@ public class PolicyBundleDownloadIntegrationTest {
 
         try {
             mockMvc.perform(get("/api/v1/bundles/" + bundle.getId() + "/download")
-                    .with(user("admin").roles("ADMIN")))
+                    .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                            new SimpleGrantedAuthority("ROLE_ADMIN"))))
                     .andExpect(status().isOk())
                     .andExpect(header().string("Content-Type", "application/gzip"));
         } catch (Exception e) {
@@ -128,7 +132,8 @@ public class PolicyBundleDownloadIntegrationTest {
         String bundleJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(bundle);
 
         mockMvc.perform(post("/api/v1/bundles")
-                .with(user("admin").roles("ADMIN"))
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_policy.register"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content(bundleJson))
                 .andExpect(status().isBadRequest())

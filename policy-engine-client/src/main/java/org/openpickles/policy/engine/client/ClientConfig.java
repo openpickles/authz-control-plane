@@ -16,8 +16,14 @@ public class ClientConfig {
     private String rabbitPassword;
     private String rabbitExchange;
     private String authHeader; // E.g. "Basic ..." or "Bearer ..."
+    private String clientId;
+    private String clientSecret;
+    private String tokenUri;
     private String manifestPath;
     private String publicKeyPath;
+    private long retryInitialInterval = 2000;
+    private long retryMaxInterval = 60000;
+    private double retryMultiplier = 2.0;
 
     public ClientConfig() {
     }
@@ -39,8 +45,14 @@ public class ClientConfig {
         private String rabbitPassword;
         private String rabbitExchange;
         private String authHeader;
+        private String clientId;
+        private String clientSecret;
+        private String tokenUri;
         private String manifestPath;
         private String publicKeyPath;
+        private long retryInitialInterval = 2000;
+        private long retryMaxInterval = 60000;
+        private double retryMultiplier = 2.0;
 
         public Builder failFast(boolean failFast) {
             this.failFast = failFast;
@@ -117,6 +129,21 @@ public class ClientConfig {
             return this;
         }
 
+        public Builder clientId(String clientId) {
+            this.clientId = clientId;
+            return this;
+        }
+
+        public Builder clientSecret(String clientSecret) {
+            this.clientSecret = clientSecret;
+            return this;
+        }
+
+        public Builder tokenUri(String tokenUri) {
+            this.tokenUri = tokenUri;
+            return this;
+        }
+
         public Builder manifestPath(String manifestPath) {
             this.manifestPath = manifestPath;
             return this;
@@ -124,6 +151,21 @@ public class ClientConfig {
 
         public Builder publicKeyPath(String publicKeyPath) {
             this.publicKeyPath = publicKeyPath;
+            return this;
+        }
+
+        public Builder retryInitialInterval(long retryInitialInterval) {
+            this.retryInitialInterval = retryInitialInterval;
+            return this;
+        }
+
+        public Builder retryMaxInterval(long retryMaxInterval) {
+            this.retryMaxInterval = retryMaxInterval;
+            return this;
+        }
+
+        public Builder retryMultiplier(double retryMultiplier) {
+            this.retryMultiplier = retryMultiplier;
             return this;
         }
 
@@ -144,8 +186,14 @@ public class ClientConfig {
             config.rabbitPassword = this.rabbitPassword;
             config.rabbitExchange = this.rabbitExchange;
             config.authHeader = this.authHeader;
+            config.clientId = this.clientId;
+            config.clientSecret = this.clientSecret;
+            config.tokenUri = this.tokenUri;
             config.manifestPath = this.manifestPath;
             config.publicKeyPath = this.publicKeyPath;
+            config.retryInitialInterval = this.retryInitialInterval;
+            config.retryMaxInterval = this.retryMaxInterval;
+            config.retryMultiplier = this.retryMultiplier;
             config.failFast = this.failFast;
             return config;
         }
@@ -275,6 +323,30 @@ public class ClientConfig {
         this.authHeader = authHeader;
     }
 
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
+    }
+
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = clientSecret;
+    }
+
+    public String getTokenUri() {
+        return tokenUri;
+    }
+
+    public void setTokenUri(String tokenUri) {
+        this.tokenUri = tokenUri;
+    }
+
     public String getManifestPath() {
         return manifestPath;
     }
@@ -289,5 +361,29 @@ public class ClientConfig {
 
     public void setPublicKeyPath(String publicKeyPath) {
         this.publicKeyPath = publicKeyPath;
+    }
+
+    public long getRetryInitialInterval() {
+        return retryInitialInterval;
+    }
+
+    public void setRetryInitialInterval(long retryInitialInterval) {
+        this.retryInitialInterval = retryInitialInterval;
+    }
+
+    public long getRetryMaxInterval() {
+        return retryMaxInterval;
+    }
+
+    public void setRetryMaxInterval(long retryMaxInterval) {
+        this.retryMaxInterval = retryMaxInterval;
+    }
+
+    public double getRetryMultiplier() {
+        return retryMultiplier;
+    }
+
+    public void setRetryMultiplier(double retryMultiplier) {
+        this.retryMultiplier = retryMultiplier;
     }
 }
