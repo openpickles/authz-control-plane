@@ -38,7 +38,7 @@ public class WebSocketTransport implements NotificationTransport {
         // We block here intentionally to ensure connection is established before
         // proceeding
         // but we propagate the exception so the caller can retry.
-        this.session = stompClient.connect(serverUrl, new StompSessionHandlerAdapter() {
+        this.session = stompClient.connectAsync(serverUrl, new StompSessionHandlerAdapter() {
             @Override
             public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
                 log.info("Connected to Policy Engine Control Plane. Session ID: {}", session.getSessionId());

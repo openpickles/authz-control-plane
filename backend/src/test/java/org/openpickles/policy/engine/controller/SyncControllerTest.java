@@ -5,8 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.openpickles.policy.engine.dto.request.ManifestSyncRequest;
 import org.openpickles.policy.engine.service.SyncService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
+
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,15 +21,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SyncController.class, excludeAutoConfiguration = {
-        org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration.class
+        SecurityAutoConfiguration.class,
+        SecurityFilterAutoConfiguration.class
 })
 public class SyncControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private SyncService syncService;
 
     @Autowired
@@ -46,5 +51,13 @@ public class SyncControllerTest {
                 .andExpect(status().isOk());
 
         verify(syncService).processManifest(any(ManifestSyncRequest.class));
+    }
+
+    @TestConfiguration
+    static class Config {
+        @Bean
+        public ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
     }
 }
