@@ -41,5 +41,8 @@
     "tailwindcss": "^4.1.2",
     "vite": "^7.3.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "zod-validation-error": "^5.0.0"
   }
 }
