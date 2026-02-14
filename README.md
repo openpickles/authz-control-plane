@@ -1,274 +1,177 @@
-# Centralized Policy Engine
+# OpenPickles Policy Engine
 
-A robust, distributed authorization platform designed for microservices. It combines the flexibility of **Distributed Policy-as-Code** (Teams own their policies) with the governance of a **Centralized Control Plane**.
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.0-orange)
 
-**[📖 Read the Integration Guide](INTEGRATION_GUIDE.md)** for detailed usage instructions.
+## 📖 The "Why": Solving Policy Sprawl
 
-![Dashboard](https://via.placeholder.com/800x400?text=Policy+Engine+Dashboard)
+In modern cloud-native architectures, **Authorization** and **Business Logic** often become the hardest components to manage at scale.
 
-## Features
+### The Problem
+- **Fragmentation**: Policy logic (Validation, RBAC, ABAC) is scattered across codebases in `if/else` blocks or isolated Rego files.
+- **Audit Nightmares**: "Who has access to the PII dataset?" becomes a question that requires grepping through 50 repositories.
+- **deployment Bottlenecks**: Changing a simple business rule (e.g., "Lower the transaction limit to $5k for Bronze users") requires a code change, PR review, and redeployment of the service.
+- **Governance Gaps**: Security teams have no way to enforce global constraints (e.g., "All APIs must be accessible only via TLS") without asking every team to update their code.
 
-- **Centralized Policy Management**: Create, edit, and version OPA (Rego) policies.
-- **Enhanced Authoring**: Professional editor (Monaco) with syntax highlighting and direct **File Upload** support.
-- **GitOps Integration**: Sync policies directly from **Git repositories** for version-controlled workflows.
-- **Entitlement Management**: Define fine-grained access control rules (User/Role/Group) with **Server-Side Pagination** and **Search**.
-- **Distributed Policy-as-Code**: Teams develop policies alongside their service code. The Control Plane automatically bootstraps these definitions via `policy-manifest.yaml`.
-- **Hybrid Management**: Support for both **Code-First** (Bootstrapping) and **UI-First** (Direct Creation) policy workflows.
-- **Layered Customization**: Security teams can overrides Product policies (defined by devs) with Custom policies using a safe "Copy-on-Write" model.
-- **Resource Provider Integration**: Register and manage microservices with **Dynamic Filter Schema** support.
-- **Dynamic Bundle Download**: Download policies tailored to specific resource types (e.g., `?resourceTypes=DOCUMENT`).
-- **Policy Metadata**: Policies now support `description` and `filename` metadata for better organization.
-- **Flexible Policy Binding**: Support for **PBC Model** (RBAC -> ABAC -> ReBAC), **RBAC Only**, and **Direct** evaluation modes.
-- **Real-time Updates**: Instant policy propagation via **WebSocket**, **Kafka**, or **RabbitMQ**.
-- **Shared Bundles & Federation**: Support for **Shared Bundles** where services can define ("own") bundles and subscribe to others. The Control Plane merges all subscribed bundles into a single composite configuration for the client ("Composite Download").
-- **Modern & Consistent UI**: Standardized "DataGrid" and "SlideOver" components across all listing pages.
+### The Solution: OpenPickles Policy Engine
+OpenPickles is a **Centralized Control Plane** for **Distributed Policy Enforcement**. It is designed to bridge the gap between **Governance** (Security Teams) and **Agility** (Product Teams).
 
-## Federated Policy Model
+It allows you to:
+1.  **Decouple Policy from Code**: Use [Open Policy Agent (OPA)](https://www.openpolicyagent.org/) and Rego for logic.
+2.  **Centralize Visibility**: A single dashboard to view, edit, and audit policies across *all* services.
+3.  **Enforce Dynamically**: Push policy updates (Security Patches, Business Rule Changes) to 1,000+ services in milliseconds via WebSocket/Kafka without restarting them.
+4.  **Layered Control**: Developers define *Product Defaults*, but Security Admins can transparently *Override* them with *Global Compliance Rules*.
 
-The Policy Engine now supports a **Federated Model** for policy distribution:
+---
 
-1.  **Ownership**: A service that defines a bundle in its `policy-manifest.yaml` becomes the **Owner**. It controls the bundle's `contexts` and configuration.
-2.  **Subscription**: Other services can include the same bundle name in their manifest to **Subscribe**. They will receive the policies but cannot modify the bundle definition.
-3.  **Composite Download**: When a service requests its configuration, the Control Plane aggregates all bundles it owns or subscribes to into a single, seamless download.
+## 🏗 High-Level Architecture
 
-### Example Manifest (`policy-manifest.yaml`)
-```yaml
-bundles:
-  - name: "my-service-bundle"       # Private/Owned bundle
-    targetService: "my-service"
-    contexts: ["finance", "payments"]
-  - name: "shared-compliance-bundle" # Shared/Subscribed bundle
-    targetService: "compliance-service" # Defined by another service
-    contexts: ["audit-logs"]
+The system operates on a **Hybrid Model**:
+
+```mermaid
+graph TD
+    subgraph "Control Plane (Centralized)"
+        UI[Admin Dashboard] --> API[Management API]
+        Git[Git Repo (Policies)] -. Sync .-> API
+        DB[(Database)] <--> API
+    end
+
+    subgraph "Data Plane (Distributed)"
+        SvcA[Payment Service]
+        SvcB[Order Service]
+    end
+
+    API -- "Push Updates (WebSocket/Kafka)" --> SvcA
+    API -- "Push Updates (WebSocket/Kafka)" --> SvcB
+
+    SvcA -- "1. Bootstrap (Manifest)" --> API
+    SvcB -- "1. Bootstrap (Manifest)" --> API
 ```
 
-## Testing
+1.  **Bootstrapping**: Services describe their own needs (Resources, Contexts, Default Policies) in a `policy-manifest.yaml`.
+2.  **Sync**: On startup, services register with the Control Plane.
+3.  **Governance**: Admins use the UI to review, modify, or override these policies.
+4.  **Distribution**: The Engine compiles policies (Rego/WASM) into **Bundles** and pushes them to services.
 
-### 1. Backend Unit Tests
-Run backend tests using Maven (JUnit 5):
+---
+
+## 🚀 Key Features
+
+### 1. Hybrid Policy Authoring
+- **Code-First (GitOps)**: Developers write policies in their IDE, test them locally, and `git push`. The system syncs them automatically.
+- **UI-First (Hot-Patching)**: Need to stop an attack or change a rule *now*? Edit directly in the Monaco-based web editor and push instantly.
+
+### 2. Intelligent Hierarchy
+The engine supports a sophisticated override model:
+- **Product Policies** (Bottom-Up): Defined by service owners. (e.g., "Users can read their own data").
+- **Custom Policies** (Top-Down): Defined by Admins. (e.g., "NO ONE can read data tagged `TopSecret`").
+- **Resolution**: The engine merges these automatically, ensuring Compliance always wins over Convenience.
+
+### 3. Build-Time Safety
+Includes a **Maven Plugin** (`policy-engine-maven-plugin`) that validates your `policy-manifest.yaml` and Rego syntax *during the build*, preventing bad configurations from ever reaching production.
+
+### 4. Enterprise Ready
+- **Transport Agnostic**: Native support for **WebSocket** (Simple), **Kafka** (Scale), and **RabbitMQ**.
+- **WASM Support**: Compiles Rego to WebAssembly for bare-metal performance.
+- **Audit Logging**: Every policy evaluation and change is recorded.
+
+---
+
+## 🆚 Comparison
+
+| Feature | OpenPickles | OPA Gatekeeper | Styra DAS | OPAL (Permit.io) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Primary Focus** | **Microservices & App Logic** | Kubernetes Admission Control | General Purpose OPA Mgmt | OPA Real-time Sync (The "Pipe") |
+| **Model** | **Control Plane + UI** (Self-Hosted) | K8s Controller | Commercial SaaS | Sync Engine / Sidecar |
+| **Policy Source** | **Hybrid** (Manifest + UI Overrides) | CRDs (K8s Resources) | UI / Git | Git / 3rd Party APIs |
+| **Mgmt Interface**| **Included (Dashboard)** | kubectl | Proprietary UI | CLI / API (UI is SaaS) |
+| **Best For** | **Enterprise App Dev teams** | Platform Engineers | Enterprises needing SaaS | Teams building their own AuthZ |
+
+### Why OpenPickles?
+
+**Vs. OPA Gatekeeper**: Gatekeeper is excellent for K8s clusters ("Don't run root containers"), but it doesn't help your Java microservice decide "Can User A edit Document B?". OpenPickles is purpose-built for that **Application Layer Authorization**.
+
+**Vs. OPAL (Open Policy Administration Layer)**:
+OPAL is a fantastic tool for *synchronizing* OPA with Git and Databases. However, OPAL is primarily a "Pipe"—it moves data.
+**OpenPickles is a Platform**:
+1.  **Management UI**: We provide a built-in "Pane of Glass" for authorized personnel to view and edit policies. OPAL generally requires you to build your own UI or use Permit.io's SaaS.
+2.  **Opinionated Hierarchy**: OpenPickles understands "Services", "Bundles", and "Product vs. Custom" policies tailored for large organizations. OPAL is unopinionated.
+3.  **Bootstrapping**: OpenPickles allows services to *self-register* their policy requirements via `policy-manifest.yaml`.
+
+**Vs. Styra DAS**: OpenPickles is the **Open Source, Self-Hosted alternative**. You own the data, you own the control plane, and you can customize the enforcement capabilities (like our unique Composite Bundles) without a commercial contract.
+
+---
+
+## 🛠 Getting Started
+
+### 1. Run the Control Plane
 ```bash
-cd backend
-mvn test
+./start-dev.sh
 ```
+Access the dashboard at `http://localhost:8080`.
+*Default Credentials: `admin` / `admin123`*
 
-### 2. Frontend Unit Tests
-Run frontend component tests using Vitest:
-```bash
-cd frontend
-npm test
-```
+### 2. Detailed Guides
+- **[Integration Guide](INTEGRATION_GUIDE.md)**: Full walkthrough of integrating a Java Spring Boot service.
+- **[Frontend Development](frontend/README.md)**: Guide for contributing to the dashboard.
+- **[Backend Architecture](backend/README.md)**: Deep dive into the Spring Boot Control Plane.
 
-### 3. End-to-End (E2E) Tests
-We use **Playwright** for full system testing, covering critical user flows.
+### 3. Prerequisties
+- Java 17+
+- Maven 3.8+
+- Node.js 18+ (for UI development)
 
-**Prerequisites:**
-- Backend running on `http://localhost:8080`.
-- Frontend running on `http://localhost:5173`.
+---
 
-**Test Suites:**
-- **Authentication**: `tests/auth.spec.js` - Login, Logout, invalid credentials.
-- **User Management**: `tests/users.spec.js` - Create/List/Delete Users, Roles, Groups.
-- **Resources**: `tests/resources.spec.js` - Create/Validate Resource Types.
-- **Policies**: `tests/policy-editor.spec.js` - Create Policy, Syntax Check, Git Push simulation.
-- **Bundles**: `tests/bundles.spec.js` - Create Bundle, Trigger Build.
+## 🔒 Security Architecture
 
-**Run Tests:**
-```bash
-cd frontend
-npx playwright test
-```
-*Note: Tests will run using default credentials (`admin`/`admin123`). To run verify against custom credentials, ensure `TEST_USERNAME` and `TEST_PASSWORD` env vars are set matches the backend.*
+The Control Plane uses a simplified Standard-Based security model:
+1.  **Service Authentication**: Agents/Clients authenticate using **Basic Auth** (or Client Credentials) to register and download bundles.
+2.  **User Authentication**: The Dashboard uses **Form-Based Auth** (expandable to OIDC/OAuth2).
+3.  **Secure Default**: The `policy-engine-client` defaults to `fail-open` (configurable) to ensure your service stays alive even if the Control Plane is unreachable, using cached policies.
 
-*Tip: Use `npx playwright show-report` to view detailed HTML test results including traces and videos of failures.*
-
-### 4. Client Library Integration Tests
-Verifies the full lifecycle of the **Java Client Library** (`policy-engine-client`) using a mock consumer app.
-
-**Architecture:**
-- **Client Library**: The JAR being tested. Handles WebSocket subscription and HTTP downloads.
-- **Reference App**: A mock Spring Boot app (`policy-engine-reference-app`) acting as the consumer.
-- **Test Driver**: `test-client-integration.sh` script that acts as the test runner and verifier.
-
-**Run Integration Suite:**
-```bash
-./test-client-integration.sh
-```
-
-**What it does:**
-1. Checks if Backend is UP.
-2. Builds the `policy-engine-reference-app` (simulating a client service).
-3. Starts the Reference App (Driver) on port `9090`.
-4. Creates a dummy Policy and Bundle on the Backend.
-5. Triggers a **Remote Build** via API.
-6. Verifies the Client received the WebSocket notification and downloaded the bundle (Authenticated).
-
-**Troubleshooting:**
-- Check `driver.log` for client-side logs (Auth headers, WebSocket frames).
-- Check `backend.log` for delivery logic.
-
-### 5. CI/CD Workflow
-This project includes a GitHub Actions workflow `.github/workflows/quality-check.yml` that automatically runs on every Push and Pull Request to `main`.
-
-**Pipeline Stages:**
-1. **Backend Unit Tests**: `mvn test`
-2. **Frontend Unit Tests**: `npm test`
-3. **End-to-End Tests**: Boots the full backend and runs `npx playwright test`.
-
-
-## Tech Stack
-
-- **Backend**: Java 17, Spring Boot 3.3, H2 Database, Spring Security, JPA.
-- **Frontend**: React 18, Vite, TailwindCSS, Lucide Icons.
+### Client Features & Resiliency
+The client library is designed for cloud-native reliability:
+- **Local Caching**: Policies are cached in-memory. If the Control Plane goes down, the client continues to enforce the last known good policy.
+- **Fail-Open/Close**: Configurable default behavior (`failFast`) for startup connectivity issues.
+- **Automatic Reconnection**: Exponential backoff with jitter for WebSocket/Broker connections.
+- **Background Sync**: Can start in the background to avoid blocking service startup (critical for mesh sidecars).
 
 ## Client Configuration
 
+### Quick Implementation
+Add the dependency and instantiate the client:
+
+```java
+// 1. Configure
+ClientConfig config = ClientConfig.builder()
+    .controlPlaneUrl("http://localhost:8080")
+    .manifestPath("classpath:policy-manifest.yaml")
+    .bundleName("my-service-bundle")
+    .transportType("WEBSOCKET")
+    .build();
+
+// 2. Start
+PolicyEngineClient client = new PolicyEngineClient(config);
+client.bootstrap(); // Sync manifest
+client.start();     // Start listening for updates
+
+// 3. Evaluate
+EvaluationResult result = client.evaluate("my-policy", inputMap);
+if (result.isAllowed()) {
+    // Grant Access
+}
+```
+
 The `policy-engine-client` can be configured via the `ClientConfig` builder key properties:
 
-| Property | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `controlPlaneUrl` | String | - | URL of the Policy Engine Control Plane (e.g., `http://localhost:8080`) |
-| `manifestPath` | String | - | Path to `policy-manifest.yaml` (classpath: or file:) |
-| `bundleName` | String | - | Name of the bundle to download (must match manifest) |
-| `authHeader` | String | - | Authorization header value (e.g., `Bearer <token>` or `Basic <cred>`) |
-| `failFast` | boolean | `false` | If true, throws exception if initial connection fails |
-| `retryInitialInterval`| long | `2000` | Initial retry interval in ms |
-| `retryMaxInterval` | long | `60000`| Maximum retry interval in ms |
-| `retryMultiplier` | double | `2.0` | Multiplier for exponential backoff |
+---
 
-## Real-time Transport Configuration
+## 🤝 Contributing
 
-The Policy Engine supports multiple transport mechanisms for broadcasting policy updates. The default is **WebSocket**, but **Kafka** and **RabbitMQ** are also fully supported.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit Pull Requests, report issues, and request features.
 
-### 1. WebSocket (Default)
-Simple, direct connection to the Control Plane. No extra infrastructure required.
-```yaml
-policy:
-  engine:
-    transport:
-      type: WEBSOCKET
-```
+## 📄 License
 
-### 2. Kafka
-Production-grade durability and scale.
-```yaml
-policy:
-  engine:
-    transport:
-      type: KAFKA
-      kafka:
-        topic: policy-updates
-        bootstrap-servers: localhost:9092 # Set in ClientConfig
-        group-id: my-service-group      # Set in ClientConfig
-```
-
-### 3. RabbitMQ
-Standard AMQP messaging.
-```yaml
-policy:
-  engine:
-    transport:
-      type: RABBITMQ
-      rabbitmq:
-        exchange: policy.updates
-        host: localhost                 # Set in ClientConfig
-        port: 5672                      # Set in ClientConfig
-        username: guest                 # Set in ClientConfig
-        password: guest                 # Set in ClientConfig
-```
-
-## API Overview
-
-The Control Plane exposes a comprehensive REST API for management and integration.
-
-| Category | Endpoint Base | Description |
-| :--- | :--- | :--- |
-| **Evaluation** | `/api/v1/evaluation` | Real-time policy evaluation requests |
-| **Sync** | `/api/v1/sync` | Used by clients to bootstrap definitions (`policy-manifest.yaml`) |
-| **Bundles** | `/api/v1/bundles` | Download policy bundles (WASM/Rego) |
-| **Policies** | `/api/v1/policies` | CRUD operations for OPA policies |
-| **Resources** | `/api/v1/resource-types` | Manage resource type definitions |
-| **Services** | `/api/v1/services` | Registry of connected microservices |
-| **Audit** | `/api/v1/audit` | Access policy evaluation logs |
-
-
-## Getting Started
-
-### Prerequisites
-
-- Java 17+
-- Node.js 18+
-- Maven (wrapper included)
-
-### Quick Start (Development)
-We provide helper scripts for zero-config local development:
-
-1.  **Start Backend** (builds & runs in background):
-    ```bash
-    ./start-dev.sh
-    ```
-    *   Starts on `http://localhost:8080`.
-    *   Logs output to `backend/backend.log`.
-    *   Uses default credentials: `admin` / `admin123`.
-
-2.  **Stop Backend**:
-    ```bash
-    ./stop-dev.sh
-    ```
-
-### Configuration & Security
-
-**Default Credentials (Local Dev):**
-- Username: `admin`
-- Password: `admin123`
-
-**Production Overrides:**
-To secure the application for production or custom environments, set the following environment variables:
-```bash
-export ADMIN_USERNAME=myuser
-export ADMIN_PASSWORD=mypassword
-```
-
-### Running the Application Manually
-
-#### 1. Integrated Build (Recommended for Production)
-This will build both the frontend and backend, bundle them into a single JAR, and run it.
-
-1.  Navigate to the `backend` directory:
-    ```bash
-    cd backend
-    ```
-2.  Clean and package (this automates the `npm build`):
-    ```bash
-    ./mvnw clean package
-    ```
-3.  Run the JAR:
-    ```bash
-    java -jar target/policy-engine-0.0.1.jar
-    ```
-    The application (UI and API) will be available at `http://localhost:8080`.
-
-#### 2. Development Mode
-Run frontend and backend separately for hot-reloading.
-
-**Backend**:
-1.  `cd backend`
-2.  `./mvnw spring-boot:run` (Starts on `http://localhost:8080` with default admin credentials)
-
-**Frontend**:
-1.  `cd frontend`
-2.  `npm install`
-3.  `npm run dev` (Starts on `http://localhost:5173`)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4.  Push to the branch (`git push origin feature/AmazingFeature`).
-5.  Open a Pull Request.
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache 2.0 License**. See [LICENSE](LICENSE) for more details.

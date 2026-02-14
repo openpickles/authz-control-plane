@@ -74,7 +74,30 @@ bundles:
 | **`bundles`** | Grouping of contexts. This is what the client downloads. |
 | `bundles.refreshInterval` | Suggestion to client on how often to check for updates (if polling). |
 
-### Step 2: Integrate the Client Library
+### Step 2: Build-Time Validation (Maven Plugin)
+
+Before deploying, ensure your manifest and policies are valid. Use the `policy-engine-maven-plugin` in your `pom.xml`.
+
+```xml
+<plugin>
+    <groupId>org.openpickles.policy</groupId>
+    <artifactId>policy-engine-maven-plugin</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <executions>
+        <execution>
+            <goals>
+                <goal>validate</goal>
+            </goals>
+            <configuration>
+                <manifestFile>policy-manifest.yaml</manifestFile>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+Running `mvn process-resources` will now verify your Rego syntax and manifest structure.
+
+### Step 3: Integrate the Client Library
 
 Add the `policy-engine-client` dependency to your project.
 
@@ -87,7 +110,7 @@ Add the `policy-engine-client` dependency to your project.
 </dependency>
 ```
 
-### Step 3: Initialize the Client
+### Step 4: Initialize the Client
 
 Configure and start the client on application startup using the `ClientConfig.Builder`.
 
@@ -139,7 +162,14 @@ For ad-hoc policies, prototyping, or organization-wide governance rules, you can
     - Attach the Policy.
 4.  **Manage Bundle**: Go to `Policy Bundles` and ensure the Bundle includes the Context (e.g., `payments`).
 
-The connected services will automatically receive the update via WebSocket/Kafka without restarting.
+
+### Transport Selection Guide
+
+| Transport | Pros | Cons | Best For |
+| :--- | :--- | :--- | :--- |
+| **WebSocket** | Zero-infra dependency, Simple setup | Harder to scale to 10k+ instances (stateful) | Development, Small-Medium Clusters (<500 pods) |
+| **Kafka / RabbitMQ** | State of the art scalablity, Durable (offline clients catch up) | Requires external broker | Enterprise, Large Scale (>500 pods) |
+
 
 ### Policy Layering (Overrides)
 One of the most powerful features of the Control Plane is the ability to override "Product" policies defined by teams.
