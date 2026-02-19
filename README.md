@@ -32,14 +32,14 @@ The system operates on a **Hybrid Model**:
 ```mermaid
 graph TD
     subgraph "Control Plane (Centralized)"
-        UI[Admin Dashboard] --> API[Management API]
-        Git[Git Repo (Policies)] -. Sync .-> API
-        DB[(Database)] <--> API
+        UI["Admin Dashboard"] --> API["Management API"]
+        Git["Git Repo (Policies)"] -. "Sync" .-> API
+        DB[("Database")] <--> API
     end
 
     subgraph "Data Plane (Distributed)"
-        SvcA[Payment Service]
-        SvcB[Order Service]
+        SvcA["Payment Service"]
+        SvcB["Order Service"]
     end
 
     API -- "Push Updates (WebSocket/Kafka)" --> SvcA
